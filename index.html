@@ -79,7 +79,7 @@
               <small id="playSubtitle">随机讲一个睡前故事</small>
             </div>
           </div>
-          <button class="random-button" type="button" aria-label="随机播放">
+          <button class="random-button" id="randomButton" type="button" aria-label="随机播放">
             <img src="./图标/图标1.png" alt="" />
             <span>随机播放</span>
           </button>
@@ -119,6 +119,55 @@
           </div>
           <p id="radialLabel">投影亮度</p>
         </div>
+
+        <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true"></div>
+        <section class="app-modal" id="appModal" role="dialog" aria-modal="true" aria-labelledby="randomModalTitle" aria-hidden="true" tabindex="-1">
+          <div class="modal-panel is-active" data-panel="random">
+            <div class="modal-kicker">随机播放</div>
+            <h2 class="modal-title" id="randomModalTitle">今晚播放这个主题吗？</h2>
+            <div class="random-theme-card">
+              <div>
+                <p id="randomThemeTitle">星星城堡历险记</p>
+                <small id="randomThemeSubtitle">随机讲一个睡前故事</small>
+              </div>
+              <button class="swap-button" id="swapRandomButton" type="button">换一个</button>
+            </div>
+            <div class="modal-actions">
+              <button class="modal-button secondary" id="cancelRandomButton" type="button">取消</button>
+              <button class="modal-button primary" id="sendRandomButton" type="button">发送到设备播放</button>
+            </div>
+          </div>
+
+          <div class="modal-panel" data-panel="generate">
+            <div class="modal-kicker">AI 生成</div>
+            <h2 class="modal-title" id="generateModalTitle">想让投影灯生成什么？</h2>
+            <label class="generate-field" for="generateInput">
+              <span>生成内容</span>
+              <textarea id="generateInput" rows="4" placeholder="例如：想听一个关于小恐龙找月亮的睡前故事"></textarea>
+            </label>
+            <p class="generate-error" id="generateError" aria-live="polite"></p>
+            <div class="modal-actions">
+              <button class="modal-button secondary" id="cancelGenerateButton" type="button">取消</button>
+              <button class="modal-button primary" id="submitGenerateButton" type="button">开始生成</button>
+            </div>
+          </div>
+
+          <div class="modal-panel" data-panel="loading" aria-live="polite">
+            <div class="loading-orb" aria-hidden="true"></div>
+            <h2 class="modal-title" id="loadingModalTitle">正在生成内容</h2>
+            <p class="loading-stage" id="loadingStage">正在理解你的需求</p>
+            <small class="loading-hint">生成可能需要 20 秒到 3 分钟，请稍等一下</small>
+          </div>
+
+          <div class="modal-panel" data-panel="success" aria-live="polite">
+            <div class="success-mark" aria-hidden="true">✓</div>
+            <h2 class="modal-title" id="successModalTitle">生成成功</h2>
+            <p class="success-copy" id="successCopy">新的内容已经准备好，可以开始播放了</p>
+            <div class="modal-actions single">
+              <button class="modal-button primary" id="finishGenerateButton" type="button">知道了</button>
+            </div>
+          </div>
+        </section>
 
         <div class="menu-backdrop" id="menuBackdrop"></div>
         <aside class="side-menu" id="sideMenu" aria-label="个人菜单" aria-hidden="true">
