@@ -73,17 +73,17 @@ function resizeStage() {
 
 function setActiveMode(modeName) {
   const mode = modes[modeName];
-  if (!mode || !sceneBg || !modeSymbol || !modeTitle || !modeSubtitle) return;
+  if (!mode) return;
 
   app.dataset.mode = modeName;
   sceneBg.style.backgroundImage = `url("${mode.background}")`;
   modeSymbol.textContent = mode.symbol;
   modeTitle.textContent = mode.title;
   modeSubtitle.textContent = mode.subtitle;
-  if (playGlyph) playGlyph.src = mode.playGlyph;
-  if (playTitle) playTitle.textContent = mode.playTitle;
-  if (playSubtitle) playSubtitle.textContent = mode.playSubtitle;
-  if (aiPrompt) aiPrompt.textContent = mode.prompt;
+  playGlyph.src = mode.playGlyph;
+  playTitle.textContent = mode.playTitle;
+  playSubtitle.textContent = mode.playSubtitle;
+  aiPrompt.textContent = mode.prompt;
 
   document.querySelectorAll(".mode-card").forEach((card) => {
     card.classList.toggle("is-active", card.dataset.mode === modeName);
@@ -97,12 +97,12 @@ function setActiveMode(modeName) {
 
 function openMenu() {
   app.classList.add("menu-open");
-  if (sideMenu) sideMenu.setAttribute("aria-hidden", "false");
+  sideMenu.setAttribute("aria-hidden", "false");
 }
 
 function closeMenu() {
   app.classList.remove("menu-open");
-  if (sideMenu) sideMenu.setAttribute("aria-hidden", "true");
+  sideMenu.setAttribute("aria-hidden", "true");
 }
 
 function showRadial(label, value, x) {
@@ -123,28 +123,21 @@ document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => setActiveMode(card.dataset.mode));
 });
 
-document.getElementById("avatarButton")?.addEventListener("click", openMenu);
-document.getElementById("menuBackdrop")?.addEventListener("click", closeMenu);
+document.getElementById("avatarButton").addEventListener("click", openMenu);
+document.getElementById("menuBackdrop").addEventListener("click", closeMenu);
 
 document.querySelectorAll(".quick-control[data-popover]").forEach((control) => {
   control.addEventListener("click", () => {
-    if (!radialLabel || !radialValue || !radialPopover) return;
     const isBrightness = control.dataset.popover === "brightness";
     showRadial(isBrightness ? "投影亮度" : "音量", isBrightness ? "72" : "46", isBrightness ? 86 : 292);
   });
 });
 
-document.querySelector(".quick-control.is-on")?.addEventListener("click", (event) => {
+document.querySelector(".quick-control.is-on").addEventListener("click", (event) => {
   event.currentTarget.classList.toggle("is-on");
 });
 
-generateButton?.addEventListener("click", () => {
+generateButton.addEventListener("click", () => {
   generateButton.classList.add("is-thinking");
   setTimeout(() => generateButton.classList.remove("is-thinking"), 1600);
-});
-
-document.querySelectorAll("[data-go-online]").forEach((button) => {
-  button.addEventListener("click", () => {
-    window.location.href = "./index.html";
-  });
 });
