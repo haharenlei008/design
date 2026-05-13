@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>宝宝投影灯首页 - 设备不在线</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="stage-shell" id="stageShell">
+      <main class="app is-offline" id="app" data-mode="story" data-device-status="offline" aria-label="宝宝投影灯首页">
+        <div class="scene-bg" id="sceneBg"></div>
+        <div class="scene-vignette"></div>
+
+        <header class="topbar" aria-label="设备状态">
+          <div class="device-copy">
+            <div class="device-name">
+              <span>宝宝投影灯</span>
+              <span class="online-dot" aria-label="不在线"></span>
+            </div>
+            <div class="device-status">设备不在线</div>
+          </div>
+          <button class="avatar-button" id="avatarButton" type="button" aria-label="打开个人菜单">
+            <span class="avatar-face" aria-hidden="true">👦</span>
+          </button>
+        </header>
+
+        <section class="mode-summary" aria-label="当前模式">
+          <div class="mode-copy" id="modeCopy">
+            <div class="mode-title-line">
+              <span class="mode-symbol" id="modeSymbol" aria-hidden="true">📖</span>
+              <h1 id="modeTitle">故事模式</h1>
+            </div>
+            <p id="modeSubtitle">会讲故事的好伙伴</p>
+          </div>
+
+          <div class="mini-actions" aria-label="快捷功能">
+            <button class="mini-action" type="button" aria-label="灯光" aria-disabled="true" disabled>
+              <span class="mini-icon" aria-hidden="true">💡</span>
+              <span>灯光</span>
+            </button>
+            <button class="mini-action muted" type="button" aria-label="静音" aria-disabled="true" disabled>
+              <img src="./图标/图标7.png" alt="" />
+              <span>静音</span>
+            </button>
+          </div>
+        </section>
+
+        <nav class="mode-grid" aria-label="模式选择">
+          <button class="mode-card is-active" type="button" data-mode="story" aria-label="故事模式">
+            <img src="./图片/模式插图-故事模式.png" alt="" />
+            <span>故事模式</span>
+          </button>
+          <button class="mode-card" type="button" data-mode="music" aria-label="儿歌模式">
+            <img src="./图片/模式插图-音乐模式.png" alt="" />
+            <span>儿歌模式</span>
+          </button>
+          <button class="mode-card" type="button" data-mode="sleep" aria-label="睡眠模式">
+            <img src="./图片/模式插图-睡眠模式.png" alt="" />
+            <span>睡眠模式</span>
+          </button>
+          <button class="mode-card" type="button" data-mode="parent" aria-label="亲子模式">
+            <img src="./图片/模式插图-亲子模式.png" alt="" />
+            <span>亲子模式</span>
+          </button>
+        </nav>
+
+        <div class="page-dots" aria-hidden="true">
+          <span class="is-active"></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <section class="play-panel" id="playPanel" aria-label="随机播放">
+          <div class="play-left">
+            <img class="play-glyph" id="playGlyph" src="./图标/图标6.png" alt="" />
+            <div class="play-copy">
+              <p id="playTitle">星星城堡历险记</p>
+              <small id="playSubtitle">随机讲一个睡前故事</small>
+            </div>
+          </div>
+          <button class="random-button" type="button" aria-label="随机播放" aria-disabled="true" disabled>
+            <img src="./图标/图标1.png" alt="" />
+            <span>随机播放</span>
+          </button>
+        </section>
+
+        <section class="ai-panel" aria-label="AI生成">
+          <img class="ai-spark" src="./图标/图标6.png" alt="" />
+          <p id="aiPrompt">想听什么故事？</p>
+          <button class="generate-button" id="generateButton" type="button" aria-label="立即生成" aria-disabled="true" disabled>
+            <span class="generate-spark" aria-hidden="true">✦</span>
+            <span>立即生成</span>
+          </button>
+        </section>
+
+        <footer class="quick-controls" aria-label="快捷控制">
+          <button class="quick-control" type="button" data-popover="brightness" aria-label="投影亮度" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标5.png" alt="" /></span>
+            <span>投影亮度</span>
+          </button>
+          <button class="quick-control" type="button" data-popover="volume" aria-label="音量" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标4.png" alt="" /></span>
+            <span>音量</span>
+          </button>
+          <button class="quick-control is-on" type="button" aria-label="夜灯" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标3.png" alt="" /></span>
+            <span>夜灯</span>
+          </button>
+          <button class="quick-control" type="button" aria-label="语音" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标2.png" alt="" /></span>
+            <span>语音</span>
+          </button>
+        </footer>
+
+        <div class="radial-popover" id="radialPopover" aria-hidden="true">
+          <div class="radial-meter">
+            <span id="radialValue">72</span>
+          </div>
+          <p id="radialLabel">投影亮度</p>
+        </div>
+
+        <div class="menu-backdrop" id="menuBackdrop"></div>
+        <aside class="side-menu" id="sideMenu" aria-label="个人菜单" aria-hidden="true">
+          <div class="menu-profile">
+            <div class="menu-avatar"><span>👦</span></div>
+            <strong>小宇宙宝宝</strong>
+            <small>今晚也有一盏灯陪着你</small>
+          </div>
+          <button type="button"><span>💬</span> 对话 <i></i></button>
+          <button type="button"><span>👤</span> 我的</button>
+          <button type="button"><span>⚙️</span> 设置</button>
+          <button type="button"><span>❓</span> 帮助</button>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

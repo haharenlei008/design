@@ -63,6 +63,7 @@ const radialPopover = document.getElementById("radialPopover");
 const radialLabel = document.getElementById("radialLabel");
 const radialValue = document.getElementById("radialValue");
 const sideMenu = document.getElementById("sideMenu");
+const isOffline = app.dataset.deviceStatus === "offline";
 
 function resizeStage() {
   const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -126,18 +127,20 @@ document.querySelectorAll(".mode-card").forEach((card) => {
 document.getElementById("avatarButton").addEventListener("click", openMenu);
 document.getElementById("menuBackdrop").addEventListener("click", closeMenu);
 
-document.querySelectorAll(".quick-control[data-popover]").forEach((control) => {
-  control.addEventListener("click", () => {
-    const isBrightness = control.dataset.popover === "brightness";
-    showRadial(isBrightness ? "投影亮度" : "音量", isBrightness ? "72" : "46", isBrightness ? 86 : 292);
+if (!isOffline) {
+  document.querySelectorAll(".quick-control[data-popover]").forEach((control) => {
+    control.addEventListener("click", () => {
+      const isBrightness = control.dataset.popover === "brightness";
+      showRadial(isBrightness ? "投影亮度" : "音量", isBrightness ? "72" : "46", isBrightness ? 86 : 292);
+    });
   });
-});
 
-document.querySelector(".quick-control.is-on").addEventListener("click", (event) => {
-  event.currentTarget.classList.toggle("is-on");
-});
+  document.querySelector(".quick-control.is-on").addEventListener("click", (event) => {
+    event.currentTarget.classList.toggle("is-on");
+  });
 
-generateButton.addEventListener("click", () => {
-  generateButton.classList.add("is-thinking");
-  setTimeout(() => generateButton.classList.remove("is-thinking"), 1600);
-});
+  generateButton.addEventListener("click", () => {
+    generateButton.classList.add("is-thinking");
+    setTimeout(() => generateButton.classList.remove("is-thinking"), 1600);
+  });
+}

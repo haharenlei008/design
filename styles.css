@@ -139,6 +139,15 @@ button {
   letter-spacing: 0;
 }
 
+.app.is-offline .online-dot {
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.18);
+}
+
+.app.is-offline .device-status {
+  color: rgba(255, 255, 255, 0.48);
+}
+
 .avatar-button {
   position: relative;
   width: 82px;
@@ -526,6 +535,37 @@ button {
 
 .generate-button.is-thinking {
   animation: ai-pulse 1.5s ease-in-out infinite;
+}
+
+.app.is-offline .mini-action:disabled,
+.app.is-offline .random-button:disabled,
+.app.is-offline .generate-button:disabled,
+.app.is-offline .quick-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.46;
+  filter: grayscale(0.72) saturate(0.55);
+  text-shadow: none;
+}
+
+.app.is-offline .mini-action:disabled .mini-icon,
+.app.is-offline .mini-action:disabled img,
+.app.is-offline .generate-button:disabled,
+.app.is-offline .quick-control:disabled .quick-icon {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+
+.app.is-offline .generate-button:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.app.is-offline .quick-control.is-on {
+  color: rgba(255, 255, 255, 0.56);
+}
+
+.app.is-offline .quick-control.is-on .quick-icon {
+  filter: none;
 }
 
 .quick-controls {
