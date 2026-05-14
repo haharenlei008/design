@@ -75,6 +75,7 @@ const modes = {
 const stageShell = document.getElementById("stageShell");
 const app = document.getElementById("app");
 const sceneBg = document.getElementById("sceneBg");
+const sceneBgNext = document.getElementById("sceneBgNext");
 const modeEffects = document.getElementById("modeEffects");
 const modeSymbol = document.getElementById("modeSymbol");
 const modeTitle = document.getElementById("modeTitle");
@@ -142,12 +143,12 @@ const modeEffectsConfig = {
     { symbol: "✦", type: "star", x: "45%", y: "20%", size: "24px", delay: "2.05s", duration: "2.7s", opacity: "0.6", drift: "8px" },
   ],
   music: [
-    { symbol: "♪", type: "note", x: "15%", y: "24%", size: "52px", delay: "0s", duration: "2.2s", opacity: "0.76", drift: "-15px" },
-    { symbol: "♫", type: "note", x: "78%", y: "21%", size: "48px", delay: "0.28s", duration: "2.6s", opacity: "0.68", drift: "13px" },
-    { symbol: "♬", type: "note", x: "62%", y: "38%", size: "42px", delay: "0.74s", duration: "2.4s", opacity: "0.58", drift: "-12px" },
-    { symbol: "♪", type: "note", x: "28%", y: "37%", size: "36px", delay: "1.05s", duration: "2.8s", opacity: "0.62", drift: "14px" },
-    { symbol: "♫", type: "note", x: "86%", y: "44%", size: "34px", delay: "1.42s", duration: "2.5s", opacity: "0.48", drift: "-10px" },
-    { symbol: "♪", type: "note", x: "47%", y: "17%", size: "30px", delay: "1.9s", duration: "2.3s", opacity: "0.54", drift: "9px" },
+    { symbol: "♪", type: "note", x: "15%", y: "24%", size: "52px", delay: "0s", duration: "2.2s", opacity: "0.76", drift: "-15px", driftX: "8px", spin: "8deg" },
+    { symbol: "♫", type: "note", x: "78%", y: "21%", size: "48px", delay: "0.28s", duration: "2.6s", opacity: "0.68", drift: "13px", driftX: "-7px", spin: "-7deg" },
+    { symbol: "♬", type: "note", x: "62%", y: "38%", size: "42px", delay: "0.74s", duration: "2.4s", opacity: "0.58", drift: "-12px", driftX: "9px", spin: "10deg" },
+    { symbol: "♪", type: "note", x: "28%", y: "37%", size: "36px", delay: "1.05s", duration: "2.8s", opacity: "0.62", drift: "14px", driftX: "-6px", spin: "-6deg" },
+    { symbol: "♫", type: "note", x: "86%", y: "44%", size: "34px", delay: "1.42s", duration: "2.5s", opacity: "0.48", drift: "-10px", driftX: "7px", spin: "7deg" },
+    { symbol: "♪", type: "note", x: "47%", y: "17%", size: "30px", delay: "1.9s", duration: "2.3s", opacity: "0.54", drift: "9px", driftX: "-5px", spin: "-5deg" },
   ],
   sleep: [
     { symbol: "☾", type: "moon", x: "78%", y: "18%", size: "58px", delay: "0s", duration: "4.6s", opacity: "0.72", drift: "-8px" },
@@ -193,10 +194,16 @@ let voiceDurationMs = 0;
 let isVoiceArming = false;
 let isVoiceRecording = false;
 let isVoiceKeyboardActive = false;
+let hasRenderedMode = false;
+let modeTransitionTimer = null;
+let modeBackgroundTimer = null;
+let modeCardPulseTimer = null;
 
 const VOICE_HOLD_DELAY = 1500;
 const MIN_VOICE_DURATION = 800;
 const MAX_VOICE_DURATION = 60000;
+const MODE_BACKGROUND_TRANSITION_MS = 360;
+const MODE_CONTENT_TRANSITION_MS = 320;
 
 function resizeStage() {
   const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -601,6 +608,8 @@ function sendVoiceToDevice() {
 }
 
 function clearModeEffects() {
+  if (!modeEffects) return;
+
   modeEffects.replaceChildren();
 }
 
@@ -614,22 +623,86 @@ function createModeEffectItem(effect) {
   item.style.setProperty("--delay", effect.delay);
   item.style.setProperty("--duration", effect.duration);
   item.style.setProperty("--effect-opacity", effect.opacity);
-  item.style.setProperty("--drift", effect.drift);
+  item.style.setProperty("--drift-y", effect.drift);
+  item.style.setProperty("--drift-x", effect.driftX || "0px");
+  item.style.setProperty("--spin", effect.spin || "0deg");
   return item;
 }
 
 function renderModeEffects(modeName) {
+  if (!modeEffects) return;
+
   const effects = modeEffectsConfig[modeName] || modeEffectsConfig.story;
   clearModeEffects();
   modeEffects.append(...effects.map(createModeEffectItem));
+}
+
+function setModeBackground(background, shouldAnimate) {
+  if (!sceneBgNext || !shouldAnimate) {
+    sceneBg.style.backgroundImage = `url("${background}")`;
+    sceneBgNext?.classList.remove("is-visible");
+    sceneBg.classList.remove("is-dimming");
+    return;
+  }
+
+  clearTimeout(modeBackgroundTimer);
+  sceneBgNext.style.backgroundImage = `url("${background}")`;
+  sceneBgNext.classList.remove("is-visible");
+  sceneBgNext.offsetWidth;
+  sceneBgNext.classList.add("is-visible");
+  sceneBg.classList.add("is-dimming");
+  modeBackgroundTimer = setTimeout(() => {
+    sceneBg.style.backgroundImage = `url("${background}")`;
+    sceneBgNext.classList.remove("is-visible");
+    sceneBg.classList.remove("is-dimming");
+  }, MODE_BACKGROUND_TRANSITION_MS);
+}
+
+function pulseModeCard(modeName, className = "is-reselected") {
+  const card = document.querySelector(`.mode-card[data-mode="${modeName}"]`);
+  if (!card) return;
+
+  clearTimeout(modeCardPulseTimer);
+  document.querySelectorAll(".mode-card").forEach((item) => {
+    item.classList.remove("is-just-selected", "is-reselected");
+  });
+  card.offsetWidth;
+  card.classList.add(className);
+  modeCardPulseTimer = setTimeout(() => {
+    document.querySelectorAll(".mode-card").forEach((item) => {
+      item.classList.remove("is-just-selected", "is-reselected");
+    });
+  }, MODE_CONTENT_TRANSITION_MS);
+}
+
+function triggerModeSwitchMotion(modeName) {
+  clearTimeout(modeTransitionTimer);
+  app.classList.remove("is-mode-switching", "is-mode-entering");
+  app.offsetWidth;
+  app.classList.add("is-mode-switching");
+  requestAnimationFrame(() => {
+    app.classList.add("is-mode-entering");
+  });
+  modeTransitionTimer = setTimeout(() => {
+    app.classList.remove("is-mode-switching", "is-mode-entering");
+  }, MODE_CONTENT_TRANSITION_MS);
+  pulseModeCard(modeName, "is-just-selected");
 }
 
 function setActiveMode(modeName) {
   const mode = modes[modeName];
   if (!mode) return;
 
+  const previousMode = app.dataset.mode;
+  const isSameMode = hasRenderedMode && previousMode === modeName;
+
+  if (isSameMode) {
+    pulseModeCard(modeName);
+    return;
+  }
+
   app.dataset.mode = modeName;
-  sceneBg.style.backgroundImage = `url("${mode.background}")`;
+  setModeBackground(mode.background, hasRenderedMode);
   modeSymbol.textContent = mode.symbol;
   modeTitle.textContent = mode.title;
   modeSubtitle.textContent = mode.subtitle;
@@ -647,6 +720,11 @@ function setActiveMode(modeName) {
     dot.classList.toggle("is-active", index === mode.dot);
   });
 
+  if (hasRenderedMode) {
+    triggerModeSwitchMotion(modeName);
+  }
+
+  hasRenderedMode = true;
 }
 
 function openMenu() {
