@@ -14,13 +14,42 @@
 
         <header class="topbar" aria-label="设备状态">
           <div class="device-copy">
-            <div class="device-name">
-              <span>宝宝投影灯</span>
+            <button class="device-name device-switcher is-device-offline" id="deviceSwitcherButton" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="deviceMenu">
+              <span class="device-name-text" id="deviceNameText">宝宝投影灯</span>
               <span class="online-dot" aria-label="不在线"></span>
+              <svg class="device-chevron" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M7 10l5 5 5-5"></path>
+              </svg>
+            </button>
+            <div class="device-status" id="deviceStatusText">设备不在线</div>
+            <div class="device-menu" id="deviceMenu" aria-hidden="true">
+              <button class="device-option is-active" type="button" data-device-name="宝宝投影灯" data-device-status="offline" aria-pressed="true">
+                <span class="device-option-copy">
+                  <strong>宝宝投影灯</strong>
+                  <small>儿童房 · 不在线</small>
+                </span>
+                <span class="device-option-mark" aria-hidden="true">✓</span>
+              </button>
+              <button class="device-option" type="button" data-device-name="备用投影灯" data-device-status="offline" aria-pressed="false">
+                <span class="device-option-copy">
+                  <strong>备用投影灯</strong>
+                  <small>书房 · 不在线</small>
+                </span>
+                <span class="device-option-mark" aria-hidden="true">✓</span>
+              </button>
+              <button class="device-add-button" type="button" data-device-add>
+                <span class="device-add-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                  </svg>
+                </span>
+                <span>添加设备</span>
+              </button>
+              <p class="device-menu-hint" id="deviceMenuHint" aria-live="polite"></p>
             </div>
-            <div class="device-status">设备不在线</div>
           </div>
-          <button class="avatar-button" id="avatarButton" type="button" aria-label="打开个人菜单">
+          <button class="avatar-button" id="avatarButton" type="button" aria-label="打开功能中心" aria-expanded="false">
             <span class="avatar-face" aria-hidden="true">👦</span>
           </button>
         </header>
@@ -35,10 +64,6 @@
           </div>
 
           <div class="mini-actions" aria-label="快捷功能">
-            <button class="mini-action" type="button" aria-label="灯光" aria-disabled="true" disabled>
-              <span class="mini-icon" aria-hidden="true">💡</span>
-              <span>灯光</span>
-            </button>
             <button class="mini-action muted" type="button" aria-label="静音" aria-disabled="true" disabled>
               <img src="./图标/图标7.png" alt="" />
               <span>静音</span>
@@ -86,8 +111,22 @@
         </section>
 
         <section class="ai-panel" aria-label="AI生成">
-          <img class="ai-spark" src="./图标/图标6.png" alt="" />
-          <p id="aiPrompt">想听什么故事？</p>
+          <div class="ai-left">
+            <span class="ai-spark-wrap" aria-hidden="true">
+              <svg class="ai-spark" viewBox="0 0 64 64" focusable="false">
+                <path class="ai-orbit" d="M14 34c7-13 27-20 38-11 8 7-1 21-18 25-15 3-29-3-31-12-1-5 3-10 11-14"></path>
+                <rect class="ai-core" x="17" y="18" width="30" height="28" rx="14"></rect>
+                <path class="ai-line" d="M25 37l4-14 4 14"></path>
+                <path class="ai-line" d="M27 32h4"></path>
+                <path class="ai-line" d="M39 23v14"></path>
+                <path class="ai-star" d="M50 9l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"></path>
+              </svg>
+            </span>
+            <div class="ai-copy">
+              <span class="ai-kicker">AI 创作</span>
+              <p id="aiPrompt">想听什么故事？</p>
+            </div>
+          </div>
           <button class="generate-button" id="generateButton" type="button" aria-label="立即生成" aria-disabled="true" disabled>
             <span class="generate-spark" aria-hidden="true">✦</span>
             <span>立即生成</span>
@@ -95,42 +134,133 @@
         </section>
 
         <footer class="quick-controls" aria-label="快捷控制">
-          <button class="quick-control" type="button" data-popover="brightness" aria-label="投影亮度" aria-disabled="true" disabled>
+          <button class="quick-control" type="button" data-control="brightness" aria-label="调节投影亮度" aria-disabled="true" disabled>
             <span class="quick-icon"><img src="./图标/图标5.png" alt="" /></span>
             <span>投影亮度</span>
           </button>
-          <button class="quick-control" type="button" data-popover="volume" aria-label="音量" aria-disabled="true" disabled>
-            <span class="quick-icon"><img src="./图标/图标4.png" alt="" /></span>
-            <span>音量</span>
-          </button>
-          <button class="quick-control is-on" type="button" aria-label="夜灯" aria-disabled="true" disabled>
-            <span class="quick-icon"><img src="./图标/图标3.png" alt="" /></span>
-            <span>夜灯</span>
-          </button>
-          <button class="quick-control" type="button" aria-label="语音" aria-disabled="true" disabled>
+          <button class="quick-control quick-control-primary" type="button" data-control="voice" aria-label="语音" aria-disabled="true" disabled>
             <span class="quick-icon"><img src="./图标/图标2.png" alt="" /></span>
             <span>语音</span>
+            <span class="voice-record-badge" id="voiceRecordBadge" aria-live="polite">按住</span>
+          </button>
+          <button class="quick-control is-on" type="button" data-control="night-light" aria-label="夜灯" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标3.png" alt="" /></span>
+            <span>夜灯</span>
           </button>
         </footer>
 
         <div class="radial-popover" id="radialPopover" aria-hidden="true">
-          <div class="radial-meter">
-            <span id="radialValue">72</span>
+          <div class="radial-meter" id="radialMeter">
+            <span id="radialValue">72%</span>
           </div>
-          <p id="radialLabel">投影亮度</p>
+          <div class="brightness-copy">
+            <p id="radialLabel">投影亮度</p>
+            <small>滑动调节投影亮度</small>
+          </div>
+          <input class="brightness-range" id="brightnessRange" type="range" min="1" max="100" value="72" aria-label="投影亮度百分比" disabled />
         </div>
 
+        <div class="control-toast" id="controlToast" role="status" aria-hidden="true"></div>
+
+        <section class="voice-review-panel" id="voiceReviewPanel" aria-label="语音录音" aria-hidden="true">
+          <div class="voice-review-head">
+            <div class="voice-wave" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="voice-review-copy">
+              <strong id="voicePanelTitle">正在准备录音</strong>
+              <small id="voicePanelHint">设备在线后可发送语音 · <span id="voiceDuration">00:00</span></small>
+            </div>
+          </div>
+          <audio id="voicePlayback" preload="metadata"></audio>
+          <div class="voice-review-actions">
+            <button class="voice-action secondary" id="voicePlayButton" type="button" disabled>试听</button>
+            <button class="voice-action secondary" id="redoVoiceButton" type="button" disabled>重录</button>
+            <button class="voice-action primary" id="sendVoiceButton" type="button" disabled>发送到设备播放</button>
+          </div>
+        </section>
+
         <div class="menu-backdrop" id="menuBackdrop"></div>
-        <aside class="side-menu" id="sideMenu" aria-label="个人菜单" aria-hidden="true">
+        <aside class="side-menu" id="sideMenu" aria-label="功能中心" aria-hidden="true">
+          <button class="menu-close" type="button" aria-label="关闭功能中心">×</button>
+
           <div class="menu-profile">
             <div class="menu-avatar"><span>👦</span></div>
-            <strong>小宇宙宝宝</strong>
-            <small>今晚也有一盏灯陪着你</small>
+            <div class="menu-profile-copy">
+              <strong>小宇宙宝宝</strong>
+              <small>今晚也有一盏灯陪着你</small>
+              <span class="menu-account">登录账号：138****8888</span>
+              <span class="menu-device-status is-offline">设备不在线</span>
+            </div>
           </div>
-          <button type="button"><span>💬</span> 对话 <i></i></button>
-          <button type="button"><span>👤</span> 我的</button>
-          <button type="button"><span>⚙️</span> 设置</button>
-          <button type="button"><span>❓</span> 帮助</button>
+
+          <section class="menu-section" aria-label="主功能">
+            <div class="menu-section-title">主功能</div>
+            <div class="menu-primary-grid">
+              <button class="menu-action menu-primary-action" type="button" data-menu-action="play-history">
+                <span class="menu-action-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" focusable="false">
+                    <circle cx="24" cy="24" r="15"></circle>
+                    <path d="M24 14v11l8 5"></path>
+                    <path d="M15 11h-6v6"></path>
+                  </svg>
+                </span>
+                <span class="menu-item-copy">
+                  <strong>播放记录</strong>
+                  <small>查看最近播放与生成内容</small>
+                </span>
+              </button>
+              <button class="menu-action menu-primary-action" type="button" data-menu-action="device-settings">
+                <span class="menu-action-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" focusable="false">
+                    <path d="M10 16h16"></path>
+                    <path d="M34 16h4"></path>
+                    <circle cx="30" cy="16" r="4"></circle>
+                    <path d="M10 32h4"></path>
+                    <path d="M22 32h16"></path>
+                    <circle cx="18" cy="32" r="4"></circle>
+                  </svg>
+                </span>
+                <span class="menu-item-copy">
+                  <strong>设备设置</strong>
+                  <small>管理灯光、亮度与设备偏好</small>
+                </span>
+              </button>
+              <button class="menu-action menu-primary-action" type="button" data-menu-action="companion-copy">
+                <span class="menu-action-icon" aria-hidden="true">
+                  <svg viewBox="0 0 48 48" focusable="false">
+                    <path d="M12 14h24v16H24l-8 6v-6h-4z"></path>
+                    <path d="M33 9l2 5 5 2-5 2-2 5-2-5-5-2 5-2z"></path>
+                  </svg>
+                </span>
+                <span class="menu-item-copy">
+                  <strong>陪伴文案</strong>
+                  <small>调整宝宝喜欢的陪伴表达</small>
+                </span>
+              </button>
+            </div>
+          </section>
+
+          <section class="menu-section menu-secondary-section" aria-label="更多功能">
+            <button class="menu-action menu-more-action" type="button" data-menu-action="more-settings">
+              <span class="menu-action-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48" focusable="false">
+                  <circle cx="16" cy="16" r="4"></circle>
+                  <circle cx="32" cy="16" r="4"></circle>
+                  <circle cx="16" cy="32" r="4"></circle>
+                  <circle cx="32" cy="32" r="4"></circle>
+                </svg>
+              </span>
+              <span class="menu-item-copy">
+                <strong>更多设置</strong>
+                <small>客服、常见问题、版本、协议与购买合作</small>
+              </span>
+              <span class="menu-action-arrow" aria-hidden="true">›</span>
+            </button>
+          </section>
         </aside>
       </main>
     </div>
