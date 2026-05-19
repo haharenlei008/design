@@ -85,6 +85,7 @@ const playTitle = document.getElementById("playTitle");
 const playSubtitle = document.getElementById("playSubtitle");
 const aiPrompt = document.getElementById("aiPrompt");
 const randomButton = document.getElementById("randomButton");
+const stopPlayButton = document.getElementById("stopPlayButton");
 const generateButton = document.getElementById("generateButton");
 const deviceSwitcherButton = document.getElementById("deviceSwitcherButton");
 const deviceMenu = document.getElementById("deviceMenu");
@@ -107,7 +108,7 @@ const voicePanelHint = document.getElementById("voicePanelHint");
 const voiceDuration = document.getElementById("voiceDuration");
 const voicePlayback = document.getElementById("voicePlayback");
 const voicePlayButton = document.getElementById("voicePlayButton");
-const redoVoiceButton = document.getElementById("redoVoiceButton");
+const closeVoiceReviewButton = document.getElementById("closeVoiceReviewButton");
 const sendVoiceButton = document.getElementById("sendVoiceButton");
 const sideMenu = document.getElementById("sideMenu");
 const avatarButton = document.getElementById("avatarButton");
@@ -118,6 +119,8 @@ const modalBackdrop = document.getElementById("modalBackdrop");
 const appModal = document.getElementById("appModal");
 const randomThemeTitle = document.getElementById("randomThemeTitle");
 const randomThemeSubtitle = document.getElementById("randomThemeSubtitle");
+const randomPreviewButton = document.getElementById("randomPreviewButton");
+const randomPreviewPlayback = document.getElementById("randomPreviewPlayback");
 const swapRandomButton = document.getElementById("swapRandomButton");
 const cancelRandomButton = document.getElementById("cancelRandomButton");
 const sendRandomButton = document.getElementById("sendRandomButton");
@@ -125,14 +128,27 @@ const generateInput = document.getElementById("generateInput");
 const generateError = document.getElementById("generateError");
 const cancelGenerateButton = document.getElementById("cancelGenerateButton");
 const submitGenerateButton = document.getElementById("submitGenerateButton");
+const cancelAiLoadingButton = document.getElementById("cancelAiLoadingButton");
 const loadingStage = document.getElementById("loadingStage");
+const aiAudioCard = document.getElementById("aiAudioCard");
+const aiAudioTitle = document.getElementById("aiAudioTitle");
+const aiAudioPromptPreview = document.getElementById("aiAudioPromptPreview");
+const aiAudioPlayback = document.getElementById("aiAudioPlayback");
+const playGeneratedAudioButton = document.getElementById("playGeneratedAudioButton");
+const aiAudioProgressBar = document.getElementById("aiAudioProgressBar");
+const aiAudioCurrentTime = document.getElementById("aiAudioCurrentTime");
+const aiAudioDurationTime = document.getElementById("aiAudioDurationTime");
+const aiAudioStreamStatus = document.getElementById("aiAudioStreamStatus");
+const regenerateAudioButton = document.getElementById("regenerateAudioButton");
+const closeAudioPreviewButton = document.getElementById("closeAudioPreviewButton");
+const sendGeneratedAudioButton = document.getElementById("sendGeneratedAudioButton");
 const sendingStage = document.getElementById("sendingStage");
 const sendingHint = document.getElementById("sendingHint");
 const successModalTitle = document.getElementById("successModalTitle");
 const successCopy = document.getElementById("successCopy");
 const finishGenerateButton = document.getElementById("finishGenerateButton");
 const isOffline = app.dataset.deviceStatus === "offline";
-const loadingStages = ["正在理解你的需求", "正在生成内容", "正在润色表达", "准备发送到设备"];
+const loadingStages = ["已收到生成要求", "正在理解你的需求", "正在准备音频流", "即将开始传输"];
 const modeEffectsConfig = {
   story: [
     { symbol: "✦", type: "star", x: "12%", y: "17%", size: "42px", delay: "0s", duration: "2.6s", opacity: "0.82", drift: "-12px" },
@@ -170,17 +186,25 @@ const modalTitleIds = {
   random: "randomModalTitle",
   generate: "generateModalTitle",
   loading: "loadingModalTitle",
+  "audio-preview": "audioPreviewModalTitle",
   sending: "sendingModalTitle",
   success: "successModalTitle",
 };
 let currentModalPanel = "random";
 let currentRandomItem = null;
+let randomPreviewUrl = "";
 let lastFocusedElement = null;
 let generateTimer = null;
 let loadingStageTimer = null;
+let aiStreamTimer = null;
 let sendTimer = null;
 let pendingSendItem = null;
 let generatedPrompt = "";
+let aiAudioUrl = "";
+let aiAudioBlob = null;
+let aiAudioDurationMs = 0;
+let aiStreamedDurationMs = 0;
+let aiAudioState = "idle";
 let brightnessValue = Number(brightnessRange?.value || 72);
 let brightnessCloseTimer = null;
 let controlToastTimer = null;
@@ -202,6 +226,12 @@ let modeCardPulseTimer = null;
 const VOICE_HOLD_DELAY = 1500;
 const MIN_VOICE_DURATION = 800;
 const MAX_VOICE_DURATION = 60000;
+const AI_GENERATION_DELAY_MS = 5000;
+const AI_AUDIO_DURATION_MS = 20000;
+const AI_STREAM_TICK_MS = 520;
+const AI_STREAM_INCREMENT_MS = 1500;
+const AI_PREVIEW_MIN_DURATION_MS = 1200;
+const RANDOM_PREVIEW_DURATION_MS = 8000;
 const MODE_BACKGROUND_TRANSITION_MS = 360;
 const MODE_CONTENT_TRANSITION_MS = 320;
 
@@ -310,6 +340,10 @@ function showControlToast(message) {
     controlToast.classList.remove("is-open");
     controlToast.setAttribute("aria-hidden", "true");
   }, 1800);
+}
+
+function stopDevicePlayback() {
+  showControlToast("已停止播放");
 }
 
 function formatVoiceTime(durationMs) {
@@ -443,6 +477,10 @@ function createPrototypeVoiceBlob(durationMs) {
   }
 
   return new Blob([view], { type: "audio/wav" });
+}
+
+function createPrototypeAiAudioBlob(durationMs) {
+  return createPrototypeVoiceBlob(durationMs);
 }
 
 function beginVoiceRecording() {
@@ -581,10 +619,11 @@ async function toggleVoicePlayback() {
   }
 }
 
-function redoVoiceRecording() {
+function dismissVoiceReviewPanel() {
+  voicePlayback?.pause();
   closeVoiceReviewPanel(true);
   resetVoiceUi();
-  showControlToast("继续长按语音按钮重新录制");
+  voiceButton?.focus();
 }
 
 function sendVoiceToDevice() {
@@ -759,6 +798,47 @@ function pickRandomPlayItem(modeName, excludeTitle) {
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
+function clearRandomPreview() {
+  if (randomPreviewPlayback) {
+    randomPreviewPlayback.pause();
+    randomPreviewPlayback.removeAttribute("src");
+    randomPreviewPlayback.load();
+  }
+
+  if (randomPreviewUrl) {
+    URL.revokeObjectURL(randomPreviewUrl);
+    randomPreviewUrl = "";
+  }
+
+  if (randomPreviewButton) {
+    randomPreviewButton.textContent = "试听";
+    randomPreviewButton.disabled = !currentRandomItem;
+  }
+}
+
+async function toggleRandomPreviewPlayback() {
+  if (!currentRandomItem || !randomPreviewPlayback || !randomPreviewButton) return;
+
+  try {
+    if (randomPreviewPlayback.paused) {
+      if (!randomPreviewPlayback.src) {
+        const previewBlob = createPrototypeAiAudioBlob(RANDOM_PREVIEW_DURATION_MS);
+        randomPreviewUrl = URL.createObjectURL(previewBlob);
+        randomPreviewPlayback.src = randomPreviewUrl;
+        randomPreviewPlayback.load();
+      }
+      await randomPreviewPlayback.play();
+      randomPreviewButton.textContent = "暂停";
+    } else {
+      randomPreviewPlayback.pause();
+      randomPreviewButton.textContent = "试听";
+    }
+  } catch (error) {
+    randomPreviewButton.textContent = "试听";
+    showControlToast("试听暂时无法播放");
+  }
+}
+
 function showModalPanel(panelName) {
   currentModalPanel = panelName;
   appModal.dataset.panel = panelName;
@@ -786,13 +866,165 @@ function openModal(panelName, triggerElement) {
   });
 }
 
-function clearGenerateSimulation() {
+function getGeneratedAudioTitle() {
+  const source = generatedPrompt.trim();
+  return source.length > 12 ? `${source.slice(0, 12)}…` : source || "AI 内容";
+}
+
+function getGeneratedPromptPreview() {
+  const source = generatedPrompt.trim();
+  return source.length > 36 ? `生成要求：${source.slice(0, 36)}…` : `生成要求：${source || "AI 创作内容"}`;
+}
+
+function getAiPlayButtonIdleText() {
+  if (aiAudioState === "stream-complete") return "播放试听";
+  if (aiAudioState === "streaming" && aiStreamedDurationMs > 0) return "试听片段";
+  return "等待音频流";
+}
+
+function setAiAudioState(state) {
+  aiAudioState = state;
+  aiAudioCard?.setAttribute("data-stream-state", state);
+}
+
+function setAiAudioProgress(durationMs) {
+  aiStreamedDurationMs = Math.max(0, Math.min(AI_AUDIO_DURATION_MS, durationMs));
+  const progress = Math.round((aiStreamedDurationMs / AI_AUDIO_DURATION_MS) * 100);
+
+  if (aiAudioProgressBar) {
+    aiAudioProgressBar.style.width = `${progress}%`;
+  }
+  if (aiAudioCurrentTime) {
+    aiAudioCurrentTime.textContent = formatVoiceTime(aiStreamedDurationMs);
+  }
+  if (aiAudioDurationTime) {
+    aiAudioDurationTime.textContent = formatVoiceTime(AI_AUDIO_DURATION_MS);
+  }
+}
+
+function stopGeneratedAudioPlayback() {
+  if (!aiAudioPlayback) return;
+
+  aiAudioPlayback.pause();
+  aiAudioPlayback.currentTime = 0;
+  if (playGeneratedAudioButton) {
+    playGeneratedAudioButton.textContent = getAiPlayButtonIdleText();
+  }
+}
+
+function revokeAiAudioUrl() {
+  if (!aiAudioUrl) return;
+
+  URL.revokeObjectURL(aiAudioUrl);
+  aiAudioUrl = "";
+}
+
+function loadAiAudioPlaybackBlob(blob) {
+  if (!aiAudioPlayback || !blob) return;
+
+  aiAudioPlayback.pause();
+  revokeAiAudioUrl();
+  aiAudioUrl = URL.createObjectURL(blob);
+  aiAudioPlayback.src = aiAudioUrl;
+  aiAudioPlayback.load();
+}
+
+function updateAiAudioTime() {
+  if (!aiAudioPlayback || aiAudioState !== "stream-complete") return;
+
+  const duration = Number.isFinite(aiAudioPlayback.duration) ? aiAudioPlayback.duration : AI_AUDIO_DURATION_MS / 1000;
+  const current = Number.isFinite(aiAudioPlayback.currentTime) ? aiAudioPlayback.currentTime : 0;
+  const progress = duration > 0 ? Math.min(100, Math.round((current / duration) * 100)) : 100;
+
+  if (aiAudioProgressBar) {
+    aiAudioProgressBar.style.width = `${progress}%`;
+  }
+  if (aiAudioCurrentTime) {
+    aiAudioCurrentTime.textContent = formatVoiceTime(current * 1000);
+  }
+  if (aiAudioDurationTime) {
+    aiAudioDurationTime.textContent = formatVoiceTime(duration * 1000);
+  }
+}
+
+function updateAiAudioCopy(statusText) {
+  if (aiAudioTitle) {
+    aiAudioTitle.textContent = getGeneratedAudioTitle();
+    aiAudioTitle.title = generatedPrompt;
+  }
+  if (aiAudioPromptPreview) {
+    aiAudioPromptPreview.textContent = getGeneratedPromptPreview();
+    aiAudioPromptPreview.title = `生成要求：${generatedPrompt}`;
+  }
+  if (aiAudioStreamStatus) {
+    aiAudioStreamStatus.textContent = statusText;
+  }
+}
+
+function clearAiAudioPreview(resetPrompt = false) {
+  clearInterval(aiStreamTimer);
+  aiStreamTimer = null;
+  aiAudioDurationMs = 0;
+  aiStreamedDurationMs = 0;
+  setAiAudioState("idle");
+
+  if (aiAudioPlayback) {
+    aiAudioPlayback.pause();
+    aiAudioPlayback.removeAttribute("src");
+    aiAudioPlayback.load();
+  }
+  revokeAiAudioUrl();
+
+  aiAudioBlob = null;
+  setAiAudioProgress(0);
+  if (aiAudioTitle) {
+    aiAudioTitle.textContent = "AI 内容正在生成";
+    aiAudioTitle.removeAttribute("title");
+  }
+  if (aiAudioPromptPreview) {
+    aiAudioPromptPreview.textContent = "音频流准备开始传输";
+    aiAudioPromptPreview.removeAttribute("title");
+  }
+  if (aiAudioStreamStatus) {
+    aiAudioStreamStatus.textContent = "正在等待后端开始传输音频流";
+  }
+  if (playGeneratedAudioButton) {
+    playGeneratedAudioButton.textContent = "等待音频流";
+    playGeneratedAudioButton.disabled = true;
+  }
+  if (sendGeneratedAudioButton) {
+    sendGeneratedAudioButton.disabled = true;
+  }
+
+  if (resetPrompt) {
+    generatedPrompt = "";
+    if (generateInput) {
+      generateInput.value = "";
+    }
+  }
+}
+
+function clearGenerateSimulation(options = {}) {
+  const { resetAudio = true, resetPrompt = false } = options;
+
   clearTimeout(generateTimer);
   clearInterval(loadingStageTimer);
+  clearInterval(aiStreamTimer);
   generateTimer = null;
   loadingStageTimer = null;
-  generateButton.classList.remove("is-thinking");
-  submitGenerateButton.disabled = false;
+  aiStreamTimer = null;
+  generateButton?.classList.remove("is-thinking");
+  if (submitGenerateButton) {
+    submitGenerateButton.disabled = false;
+  }
+  if (resetAudio) {
+    clearAiAudioPreview(resetPrompt);
+  } else if (resetPrompt) {
+    generatedPrompt = "";
+    if (generateInput) {
+      generateInput.value = "";
+    }
+  }
 }
 
 function clearSendSimulation() {
@@ -816,6 +1048,7 @@ function completeSendToDevice() {
 
 function startSendToDevice(item) {
   pendingSendItem = item;
+  clearRandomPreview();
   clearGenerateSimulation();
   clearSendSimulation();
   sendingStage.textContent = item?.sendingStage || "正在发送到宝宝投影灯";
@@ -831,7 +1064,9 @@ function startSendToDevice(item) {
 function closeModal() {
   if (currentModalPanel === "loading" || currentModalPanel === "sending") return;
 
-  clearGenerateSimulation();
+  const shouldResetGenerate = currentModalPanel === "generate" || currentModalPanel === "audio-preview";
+  clearRandomPreview();
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: shouldResetGenerate });
   clearSendSimulation();
   app.classList.remove("modal-open");
   appModal.setAttribute("aria-hidden", "true");
@@ -844,51 +1079,216 @@ function closeModal() {
 }
 
 function refreshRandomPlayCandidate() {
+  clearRandomPreview();
   currentRandomItem = pickRandomPlayItem(app.dataset.mode, currentRandomItem?.title || playTitle.textContent);
   randomThemeTitle.textContent = currentRandomItem.title;
-  randomThemeSubtitle.textContent = currentRandomItem.subtitle;
+  if (randomThemeSubtitle) {
+    randomThemeSubtitle.textContent = currentRandomItem.subtitle;
+  }
+  if (randomPreviewButton) {
+    randomPreviewButton.disabled = false;
+  }
 }
 
 function openRandomPlayModal(event) {
+  clearRandomPreview();
   pendingSendItem = null;
   currentRandomItem = pickRandomPlayItem(app.dataset.mode, playTitle.textContent);
   randomThemeTitle.textContent = currentRandomItem.title;
-  randomThemeSubtitle.textContent = currentRandomItem.subtitle;
+  if (randomThemeSubtitle) {
+    randomThemeSubtitle.textContent = currentRandomItem.subtitle;
+  }
+  if (randomPreviewButton) {
+    randomPreviewButton.disabled = false;
+  }
   openModal("random", event.currentTarget);
 }
 
 function confirmRandomPlay() {
   if (!currentRandomItem) return;
 
+  clearRandomPreview();
   startSendToDevice(currentRandomItem);
 }
 
 function openGenerateModal(event) {
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: true });
   generateInput.value = "";
   generateError.textContent = "";
   pendingSendItem = null;
   openModal("generate", event.currentTarget);
 }
 
-function finishGenerateSuccess() {
-  const title = generatedPrompt.length > 14 ? `${generatedPrompt.slice(0, 14)}…` : generatedPrompt;
+function completeAiAudioStream() {
+  clearInterval(aiStreamTimer);
+  aiStreamTimer = null;
+  stopGeneratedAudioPlayback();
+  setAiAudioState("stream-complete");
+  aiAudioDurationMs = AI_AUDIO_DURATION_MS;
+  aiAudioBlob = createPrototypeAiAudioBlob(aiAudioDurationMs);
+  loadAiAudioPlaybackBlob(aiAudioBlob);
+  setAiAudioProgress(AI_AUDIO_DURATION_MS);
+  updateAiAudioCopy("音频流接收完毕，可以试听后发送给设备播放");
+
+  const audioPreviewTitle = document.getElementById("audioPreviewModalTitle");
+  if (audioPreviewTitle) {
+    audioPreviewTitle.textContent = "生成完成";
+  }
+  if (playGeneratedAudioButton) {
+    playGeneratedAudioButton.textContent = "播放试听";
+    playGeneratedAudioButton.disabled = false;
+  }
+  if (sendGeneratedAudioButton) {
+    sendGeneratedAudioButton.disabled = false;
+  }
+  requestAnimationFrame(() => {
+    sendGeneratedAudioButton?.focus();
+  });
+}
+
+function stepAiAudioStream() {
+  const nextDuration = aiStreamedDurationMs + AI_STREAM_INCREMENT_MS;
+  setAiAudioProgress(nextDuration);
+
+  if (aiAudioStreamStatus) {
+    aiAudioStreamStatus.textContent = `正在流式接收音频，已收到 ${formatVoiceTime(aiStreamedDurationMs)} / ${formatVoiceTime(AI_AUDIO_DURATION_MS)}`;
+  }
+  if (playGeneratedAudioButton && playGeneratedAudioButton.disabled) {
+    playGeneratedAudioButton.disabled = false;
+    playGeneratedAudioButton.textContent = "试听片段";
+  }
+
+  if (aiStreamedDurationMs >= AI_AUDIO_DURATION_MS) {
+    completeAiAudioStream();
+  }
+}
+
+function beginAiAudioStream() {
+  clearTimeout(generateTimer);
+  clearInterval(loadingStageTimer);
+  clearInterval(aiStreamTimer);
+  generateTimer = null;
+  loadingStageTimer = null;
+  aiStreamTimer = null;
+  generateButton.classList.remove("is-thinking");
+  submitGenerateButton.disabled = false;
+  clearAiAudioPreview(false);
+  setAiAudioState("streaming");
+  updateAiAudioCopy("后端已开始流式传输音频，收到片段后可以试听");
+
+  const audioPreviewTitle = document.getElementById("audioPreviewModalTitle");
+  if (audioPreviewTitle) {
+    audioPreviewTitle.textContent = "正在接收音频流";
+  }
+  if (sendGeneratedAudioButton) {
+    sendGeneratedAudioButton.disabled = true;
+  }
+  showModalPanel("audio-preview");
+  requestAnimationFrame(() => {
+    appModal.focus();
+  });
+  stepAiAudioStream();
+  aiStreamTimer = setInterval(stepAiAudioStream, AI_STREAM_TICK_MS);
+}
+
+async function toggleGeneratedAudioPlayback() {
+  if (!aiAudioPlayback || !playGeneratedAudioButton) return;
+
+  if (aiAudioState === "streaming") {
+    if (aiAudioPlayback.paused) {
+      const previewDuration = Math.max(AI_PREVIEW_MIN_DURATION_MS, aiStreamedDurationMs);
+      loadAiAudioPlaybackBlob(createPrototypeAiAudioBlob(previewDuration));
+      try {
+        await aiAudioPlayback.play();
+        playGeneratedAudioButton.textContent = "暂停试听";
+      } catch (error) {
+        playGeneratedAudioButton.textContent = getAiPlayButtonIdleText();
+        showControlToast("音频片段暂时无法播放");
+      }
+      return;
+    }
+
+    aiAudioPlayback.pause();
+    playGeneratedAudioButton.textContent = getAiPlayButtonIdleText();
+    return;
+  }
+
+  if (aiAudioState !== "stream-complete" || !aiAudioBlob) {
+    showControlToast("音频流还在准备中");
+    return;
+  }
+
+  try {
+    if (aiAudioPlayback.paused) {
+      if (!aiAudioPlayback.src) {
+        loadAiAudioPlaybackBlob(aiAudioBlob);
+      }
+      await aiAudioPlayback.play();
+      playGeneratedAudioButton.textContent = "暂停试听";
+    } else {
+      aiAudioPlayback.pause();
+      playGeneratedAudioButton.textContent = "播放试听";
+    }
+  } catch (error) {
+    playGeneratedAudioButton.textContent = "播放试听";
+    showControlToast("音频暂时无法播放");
+  }
+}
+
+function sendGeneratedAudioToDevice() {
+  if (aiAudioState !== "stream-complete" || !aiAudioBlob) {
+    showControlToast("请等待音频流传输完成");
+    return;
+  }
+
+  stopGeneratedAudioPlayback();
   startSendToDevice({
-    title: title || "AI 新内容",
-    subtitle: "AI 为你新生成的内容",
+    title: getGeneratedAudioTitle(),
+    subtitle: "AI 生成内容 · 已发送到设备",
+    sendingStage: "正在发送 AI 内容到宝宝投影灯",
+    sendingHint: "请保持设备在线，内容马上开始播放",
+    successTitle: "AI 内容发送成功",
+    successCopy: "AI 生成内容已发送到投影灯，马上开始播放",
   });
 }
 
 function simulateGenerateRequest() {
-  const duration = 20000 + Math.floor(Math.random() * 160001);
   let stageIndex = 0;
 
   loadingStage.textContent = loadingStages[stageIndex];
   loadingStageTimer = setInterval(() => {
     stageIndex = Math.min(stageIndex + 1, loadingStages.length - 1);
     loadingStage.textContent = loadingStages[stageIndex];
-  }, Math.max(4200, Math.floor(duration / loadingStages.length)));
+  }, Math.max(900, Math.floor(AI_GENERATION_DELAY_MS / loadingStages.length)));
 
-  generateTimer = setTimeout(finishGenerateSuccess, duration);
+  generateTimer = setTimeout(beginAiAudioStream, AI_GENERATION_DELAY_MS);
+}
+
+function cancelAiGeneration() {
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
+  showModalPanel("generate");
+  requestAnimationFrame(() => {
+    generateInput?.focus();
+  });
+}
+
+function regenerateAiAudio() {
+  if (!generatedPrompt.trim()) {
+    showModalPanel("generate");
+    requestAnimationFrame(() => {
+      generateInput?.focus();
+    });
+    return;
+  }
+
+  generateInput.value = generatedPrompt;
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
+  submitGenerateButton.disabled = true;
+  generateButton.classList.add("is-thinking");
+  loadingStage.textContent = loadingStages[0];
+  showModalPanel("loading");
+  appModal.focus();
+  simulateGenerateRequest();
 }
 
 function submitGeneratePrompt() {
@@ -902,8 +1302,10 @@ function submitGeneratePrompt() {
 
   generatedPrompt = prompt;
   generateError.textContent = "";
+  clearAiAudioPreview(false);
   submitGenerateButton.disabled = true;
   generateButton.classList.add("is-thinking");
+  loadingStage.textContent = loadingStages[0];
   showModalPanel("loading");
   appModal.focus();
   simulateGenerateRequest();
@@ -954,14 +1356,44 @@ document.addEventListener("click", (event) => {
 
 if (!isOffline) {
   randomButton.addEventListener("click", openRandomPlayModal);
+  stopPlayButton?.addEventListener("click", stopDevicePlayback);
   swapRandomButton.addEventListener("click", refreshRandomPlayCandidate);
+  randomPreviewButton?.addEventListener("click", toggleRandomPreviewPlayback);
   cancelRandomButton.addEventListener("click", closeModal);
   sendRandomButton.addEventListener("click", confirmRandomPlay);
   generateButton.addEventListener("click", openGenerateModal);
   cancelGenerateButton.addEventListener("click", closeModal);
   submitGenerateButton.addEventListener("click", submitGeneratePrompt);
+  cancelAiLoadingButton?.addEventListener("click", cancelAiGeneration);
+  playGeneratedAudioButton?.addEventListener("click", toggleGeneratedAudioPlayback);
+  regenerateAudioButton?.addEventListener("click", regenerateAiAudio);
+  closeAudioPreviewButton?.addEventListener("click", closeModal);
+  sendGeneratedAudioButton?.addEventListener("click", sendGeneratedAudioToDevice);
   finishGenerateButton.addEventListener("click", closeModal);
   modalBackdrop.addEventListener("click", closeModal);
+  aiAudioPlayback?.addEventListener("timeupdate", updateAiAudioTime);
+  aiAudioPlayback?.addEventListener("loadedmetadata", updateAiAudioTime);
+  aiAudioPlayback?.addEventListener("pause", () => {
+    if (playGeneratedAudioButton) {
+      playGeneratedAudioButton.textContent = getAiPlayButtonIdleText();
+    }
+  });
+  aiAudioPlayback?.addEventListener("ended", () => {
+    if (playGeneratedAudioButton) {
+      playGeneratedAudioButton.textContent = getAiPlayButtonIdleText();
+    }
+    updateAiAudioTime();
+  });
+  randomPreviewPlayback?.addEventListener("pause", () => {
+    if (randomPreviewButton) {
+      randomPreviewButton.textContent = "试听";
+    }
+  });
+  randomPreviewPlayback?.addEventListener("ended", () => {
+    if (randomPreviewButton) {
+      randomPreviewButton.textContent = "试听";
+    }
+  });
   generateInput.addEventListener("input", () => {
     generateError.textContent = "";
   });
@@ -1005,7 +1437,7 @@ if (!isOffline) {
     }
   });
   voicePlayButton?.addEventListener("click", toggleVoicePlayback);
-  redoVoiceButton?.addEventListener("click", redoVoiceRecording);
+  closeVoiceReviewButton?.addEventListener("click", dismissVoiceReviewPanel);
   sendVoiceButton?.addEventListener("click", sendVoiceToDevice);
   voicePlayback?.addEventListener("pause", () => {
     if (voicePlayButton) {

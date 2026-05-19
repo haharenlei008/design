@@ -66,9 +66,9 @@
           </div>
 
           <div class="mini-actions" aria-label="快捷功能">
-            <button class="mini-action muted" type="button" aria-label="静音" aria-disabled="true" disabled>
-              <img src="./图标/图标7.png" alt="" />
-              <span>静音</span>
+            <button class="mini-action stop-play-mini" id="stopPlayButton" type="button" aria-label="停止播放" aria-disabled="true" disabled>
+              <span class="mini-stop-icon" aria-hidden="true"></span>
+              <span>停止</span>
             </button>
           </div>
         </section>
@@ -165,6 +165,7 @@
         <div class="control-toast" id="controlToast" role="status" aria-hidden="true"></div>
 
         <section class="voice-review-panel" id="voiceReviewPanel" aria-label="语音录音" aria-hidden="true">
+          <button class="voice-review-close" id="closeVoiceReviewButton" type="button" aria-label="关闭录音面板" disabled>×</button>
           <div class="voice-review-head">
             <div class="voice-wave" aria-hidden="true">
               <span></span>
@@ -180,7 +181,6 @@
           <audio id="voicePlayback" preload="metadata"></audio>
           <div class="voice-review-actions">
             <button class="voice-action secondary" id="voicePlayButton" type="button" disabled>试听</button>
-            <button class="voice-action secondary" id="redoVoiceButton" type="button" disabled>重录</button>
             <button class="voice-action primary" id="sendVoiceButton" type="button" disabled>发送到设备播放</button>
           </div>
         </section>

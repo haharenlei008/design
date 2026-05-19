@@ -66,9 +66,9 @@
           </div>
 
           <div class="mini-actions" aria-label="快捷功能">
-            <button class="mini-action muted" type="button" aria-label="静音">
-              <img src="./图标/图标7.png" alt="" />
-              <span>静音</span>
+            <button class="mini-action stop-play-mini" id="stopPlayButton" type="button" aria-label="停止播放">
+              <span class="mini-stop-icon" aria-hidden="true"></span>
+              <span>停止</span>
             </button>
           </div>
         </section>
@@ -164,6 +164,7 @@
         <div class="control-toast" id="controlToast" role="status" aria-hidden="true"></div>
 
         <section class="voice-review-panel" id="voiceReviewPanel" aria-label="语音录音" aria-hidden="true">
+          <button class="voice-review-close" id="closeVoiceReviewButton" type="button" aria-label="关闭录音面板">×</button>
           <div class="voice-review-head">
             <div class="voice-wave" aria-hidden="true">
               <span></span>
@@ -179,7 +180,6 @@
           <audio id="voicePlayback" preload="metadata"></audio>
           <div class="voice-review-actions">
             <button class="voice-action secondary" id="voicePlayButton" type="button">试听</button>
-            <button class="voice-action secondary" id="redoVoiceButton" type="button">重录</button>
             <button class="voice-action primary" id="sendVoiceButton" type="button">发送到设备播放</button>
           </div>
         </section>
@@ -187,14 +187,19 @@
         <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true"></div>
         <section class="app-modal" id="appModal" role="dialog" aria-modal="true" aria-labelledby="randomModalTitle" aria-hidden="true" tabindex="-1">
           <div class="modal-panel is-active" data-panel="random">
-            <div class="modal-kicker">随机播放</div>
-            <h2 class="modal-title" id="randomModalTitle">今晚播放这个主题吗？</h2>
-            <div class="random-theme-card">
+            <div class="random-modal-head">
               <div>
-                <p id="randomThemeTitle">星星城堡历险记</p>
-                <small id="randomThemeSubtitle">随机讲一个睡前故事</small>
+                <div class="modal-kicker">随机播放</div>
+                <h2 class="modal-title" id="randomModalTitle">今晚播放这个主题吗？</h2>
               </div>
               <button class="swap-button" id="swapRandomButton" type="button">换一个</button>
+            </div>
+            <div class="random-theme-card">
+              <div class="random-theme-copy">
+                <p id="randomThemeTitle">星星城堡历险记</p>
+              </div>
+              <button class="random-preview-button" id="randomPreviewButton" type="button">试听</button>
+              <audio id="randomPreviewPlayback" preload="auto"></audio>
             </div>
             <div class="modal-actions">
               <button class="modal-button secondary" id="cancelRandomButton" type="button">取消</button>
@@ -220,7 +225,43 @@
             <div class="loading-orb" aria-hidden="true"></div>
             <h2 class="modal-title" id="loadingModalTitle">正在生成内容</h2>
             <p class="loading-stage" id="loadingStage">正在理解你的需求</p>
-            <small class="loading-hint">生成可能需要 20 秒到 3 分钟，请稍等一下</small>
+            <small class="loading-hint">后端正在准备音频流，预计 5 秒左右</small>
+            <div class="modal-actions single modal-actions-compact">
+              <button class="modal-button secondary" id="cancelAiLoadingButton" type="button">取消生成</button>
+            </div>
+          </div>
+
+          <div class="modal-panel" data-panel="audio-preview" aria-live="polite">
+            <button class="modal-close-button" id="closeAudioPreviewButton" type="button" aria-label="关闭弹窗">×</button>
+            <div class="modal-kicker">AI 生成</div>
+            <h2 class="modal-title" id="audioPreviewModalTitle">正在接收音频流</h2>
+            <div class="ai-audio-card" id="aiAudioCard" data-stream-state="streaming">
+              <div class="ai-audio-head">
+                <div class="ai-audio-orb" aria-hidden="true">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+                <div class="ai-audio-copy">
+                  <p id="aiAudioTitle">AI 内容正在生成</p>
+                  <small id="aiAudioPromptPreview">音频流准备开始传输</small>
+                </div>
+                <button class="ai-audio-play-button" id="playGeneratedAudioButton" type="button" disabled>等待音频流</button>
+              </div>
+              <audio id="aiAudioPlayback" preload="auto"></audio>
+              <div class="ai-audio-progress" aria-hidden="true">
+                <span id="aiAudioProgressBar"></span>
+              </div>
+              <div class="ai-audio-meta">
+                <span id="aiAudioCurrentTime">00:00</span>
+                <span id="aiAudioDurationTime">00:20</span>
+              </div>
+              <p class="ai-audio-prompt" id="aiAudioStreamStatus">正在等待后端开始传输音频流</p>
+            </div>
+            <div class="modal-actions ai-audio-actions">
+              <button class="modal-button secondary" id="regenerateAudioButton" type="button">重新生成</button>
+              <button class="modal-button primary" id="sendGeneratedAudioButton" type="button">发送给设备</button>
+            </div>
           </div>
 
           <div class="modal-panel" data-panel="sending" aria-live="polite">
