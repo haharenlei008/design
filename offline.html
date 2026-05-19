@@ -56,6 +56,17 @@
           </button>
         </header>
 
+        <div class="device-effect-actions" aria-label="场景效果">
+          <button class="mini-action scene-effect-mini" id="sceneEffectOnButton" type="button" aria-label="开启场景效果" aria-disabled="true" disabled>
+            <span class="mini-effect-icon" aria-hidden="true">✦</span>
+            <span>开启效果</span>
+          </button>
+          <button class="mini-action scene-effect-mini" id="sceneEffectOffButton" type="button" aria-label="关闭场景效果" aria-disabled="true" disabled>
+            <span class="mini-effect-icon" aria-hidden="true">○</span>
+            <span>关闭效果</span>
+          </button>
+        </div>
+
         <section class="mode-summary" aria-label="当前模式">
           <div class="mode-copy" id="modeCopy">
             <div class="mode-title-line">
@@ -136,31 +147,93 @@
         </section>
 
         <footer class="quick-controls" aria-label="快捷控制">
-          <button class="quick-control" type="button" data-control="brightness" aria-label="调节投影亮度" aria-disabled="true" disabled>
+          <button class="quick-control" type="button" data-control="light" aria-label="打开灯光设置" aria-disabled="true" disabled>
             <span class="quick-icon"><img src="./图标/图标5.png" alt="" /></span>
-            <span>投影亮度</span>
+            <span class="quick-label">灯光</span>
+            <small id="lightQuickValue">设备离线</small>
           </button>
           <button class="quick-control quick-control-primary" type="button" data-control="voice" aria-label="语音" aria-disabled="true" disabled>
             <span class="quick-icon"><img src="./图标/图标2.png" alt="" /></span>
-            <span>语音</span>
+            <span class="quick-label">语音</span>
             <span class="voice-record-badge" id="voiceRecordBadge" aria-live="polite">按住</span>
           </button>
-          <button class="quick-control is-on" type="button" data-control="night-light" aria-label="夜灯" aria-disabled="true" disabled>
-            <span class="quick-icon"><img src="./图标/图标3.png" alt="" /></span>
-            <span>夜灯</span>
+          <button class="quick-control" type="button" data-control="rotation" aria-label="切换投影旋转" aria-disabled="true" disabled>
+            <span class="quick-icon"><img src="./图标/图标10.png" alt="" /></span>
+            <span class="quick-label">旋转</span>
+            <small id="rotationQuickValue">设备离线</small>
           </button>
         </footer>
 
-        <div class="radial-popover" id="radialPopover" aria-hidden="true">
-          <div class="radial-meter" id="radialMeter">
-            <span id="radialValue">72%</span>
+        <section class="light-control-panel" id="lightControlPanel" aria-label="灯光设置" aria-hidden="true">
+          <button class="scene-panel-close" id="closeLightPanelButton" type="button" aria-label="关闭灯光设置" disabled>×</button>
+          <div class="scene-panel-head">
+            <div>
+              <p>灯光设置</p>
+              <small id="lightPanelHint">设备在线后可调节灯光和旋转</small>
+            </div>
+            <span class="scene-motion-status" id="lightModeStatus">设备不在线</span>
           </div>
-          <div class="brightness-copy">
-            <p id="radialLabel">投影亮度</p>
-            <small>滑动调节投影亮度</small>
+          <div class="segmented-grid light-effect-grid" role="group" aria-label="灯光模式">
+            <button class="segment-button" type="button" data-light-effect="crossfade" disabled>渐变</button>
+            <button class="segment-button" type="button" data-light-effect="marquee" disabled>跑马</button>
+            <button class="segment-button" type="button" data-light-effect="breathe" disabled>呼吸</button>
+            <button class="segment-button" type="button" data-light-effect="steady" disabled>长亮</button>
           </div>
-          <input class="brightness-range" id="brightnessRange" type="range" min="1" max="100" value="72" aria-label="投影亮度百分比" disabled />
-        </div>
+          <label class="setting-row effect-speed-row" for="effectSpeedRange">
+            <span>执行速度</span>
+            <strong id="effectSpeedValue">--</strong>
+            <input id="effectSpeedRange" type="range" min="50" max="2000" value="800" disabled />
+          </label>
+          <label class="setting-row overall-intensity-row" for="lightIntensityRange">
+            <span>整体亮度</span>
+            <strong id="lightIntensityValue">--</strong>
+            <input id="lightIntensityRange" type="range" min="1" max="100" value="65" disabled />
+          </label>
+          <div class="steady-channel-settings" id="steadyChannelSettings" aria-label="长亮三色亮度">
+            <label class="setting-row channel-row" for="steadyRedRange">
+              <span>红光亮度</span>
+              <strong id="steadyRedValue">--</strong>
+              <input id="steadyRedRange" type="range" min="0" max="100" value="65" disabled />
+            </label>
+            <label class="setting-row channel-row" for="steadyYellowRange">
+              <span>黄光亮度</span>
+              <strong id="steadyYellowValue">--</strong>
+              <input id="steadyYellowRange" type="range" min="0" max="100" value="65" disabled />
+            </label>
+            <label class="setting-row channel-row" for="steadyBlueRange">
+              <span>蓝光亮度</span>
+              <strong id="steadyBlueValue">--</strong>
+              <input id="steadyBlueRange" type="range" min="0" max="100" value="65" disabled />
+            </label>
+          </div>
+          <button class="scene-off-button" id="turnOffSceneEffectsButton" type="button" disabled>关闭灯光</button>
+        </section>
+
+        <section class="rotation-control-panel" id="rotationControlPanel" aria-label="旋转设置" aria-hidden="true">
+          <button class="scene-panel-close" id="closeRotationPanelButton" type="button" aria-label="关闭旋转设置" disabled>×</button>
+          <div class="scene-panel-head">
+            <div>
+              <p>旋转设置</p>
+              <small id="rotationPanelHint">设备在线后可调节灯光和旋转</small>
+            </div>
+            <span class="scene-motion-status" id="projectionMotionStatus">设备不在线</span>
+          </div>
+          <div class="segmented-grid rotation-speed-grid" role="group" aria-label="旋转速度">
+            <button class="segment-button" type="button" data-rotation-speed="1" disabled>
+              <strong>低速</strong>
+              <small>轻轻转动</small>
+            </button>
+            <button class="segment-button" type="button" data-rotation-speed="2" disabled>
+              <strong>中速</strong>
+              <small>互动节奏</small>
+            </button>
+            <button class="segment-button" type="button" data-rotation-speed="3" disabled>
+              <strong>高速</strong>
+              <small>更有律动</small>
+            </button>
+          </div>
+          <button class="rotation-stop-button" type="button" data-rotation-speed="0" disabled>停止旋转</button>
+        </section>
 
         <div class="control-toast" id="controlToast" role="status" aria-hidden="true"></div>
 

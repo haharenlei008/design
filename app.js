@@ -72,6 +72,51 @@ const modes = {
   },
 };
 
+const lightEffectLabels = {
+  crossfade: "渐变灯",
+  marquee: "跑马灯",
+  breathe: "呼吸灯",
+  steady: "长亮",
+};
+
+const rotationSpeedLabels = {
+  0: "已停转",
+  1: "低速",
+  2: "中速",
+  3: "高速",
+};
+
+const modeDeviceDefaults = {
+  story: {
+    lightEffect: "crossfade",
+    speedMs: 800,
+    intensity: 65,
+    rotationSpeed: 1,
+    toast: "已切换故事模式，渐变灯会轻轻转动",
+  },
+  music: {
+    lightEffect: "marquee",
+    speedMs: 300,
+    intensity: 90,
+    rotationSpeed: 3,
+    toast: "已切换儿歌模式，灯光和投影更有律动",
+  },
+  sleep: {
+    lightEffect: "breathe",
+    speedMs: 1200,
+    intensity: 35,
+    rotationSpeed: 1,
+    toast: "已切换睡眠模式，灯光会慢慢呼吸",
+  },
+  parent: {
+    lightEffect: "crossfade",
+    speedMs: 500,
+    intensity: 80,
+    rotationSpeed: 2,
+    toast: "已切换亲子模式，灯光更明亮一些",
+  },
+};
+
 const stageShell = document.getElementById("stageShell");
 const app = document.getElementById("app");
 const sceneBg = document.getElementById("sceneBg");
@@ -100,6 +145,34 @@ const radialValue = document.getElementById("radialValue");
 const radialMeter = document.getElementById("radialMeter");
 const brightnessRange = document.getElementById("brightnessRange");
 const controlToast = document.getElementById("controlToast");
+const lightControlPanel = document.getElementById("lightControlPanel");
+const rotationControlPanel = document.getElementById("rotationControlPanel");
+const lightPanelHint = document.getElementById("lightPanelHint");
+const rotationPanelHint = document.getElementById("rotationPanelHint");
+const lightModeStatus = document.getElementById("lightModeStatus");
+const projectionMotionStatus = document.getElementById("projectionMotionStatus");
+const lightEffectButtons = document.querySelectorAll("[data-light-effect]");
+const rotationSpeedButtons = document.querySelectorAll("[data-rotation-speed]");
+const closeLightPanelButton = document.getElementById("closeLightPanelButton");
+const closeRotationPanelButton = document.getElementById("closeRotationPanelButton");
+const turnOffSceneEffectsButton = document.getElementById("turnOffSceneEffectsButton");
+const sceneEffectOnButton = document.getElementById("sceneEffectOnButton");
+const sceneEffectOffButton = document.getElementById("sceneEffectOffButton");
+const effectSpeedRange = document.getElementById("effectSpeedRange");
+const lightIntensityRange = document.getElementById("lightIntensityRange");
+const effectSpeedValue = document.getElementById("effectSpeedValue");
+const lightIntensityValue = document.getElementById("lightIntensityValue");
+const steadyRedRange = document.getElementById("steadyRedRange");
+const steadyYellowRange = document.getElementById("steadyYellowRange");
+const steadyBlueRange = document.getElementById("steadyBlueRange");
+const steadyRedValue = document.getElementById("steadyRedValue");
+const steadyYellowValue = document.getElementById("steadyYellowValue");
+const steadyBlueValue = document.getElementById("steadyBlueValue");
+const lightQuickValue = document.getElementById("lightQuickValue");
+const rotationQuickValue = document.getElementById("rotationQuickValue");
+const lightSceneButton = document.querySelector('[data-control="light"]');
+const rotationControlButton = document.querySelector('[data-control="rotation"]');
+const nightLightControlButton = document.querySelector('[data-control="night-light"]');
 const voiceButton = document.querySelector('[data-control="voice"]');
 const voiceRecordBadge = document.getElementById("voiceRecordBadge");
 const voiceReviewPanel = document.getElementById("voiceReviewPanel");
@@ -222,6 +295,16 @@ let hasRenderedMode = false;
 let modeTransitionTimer = null;
 let modeBackgroundTimer = null;
 let modeCardPulseTimer = null;
+let deviceControlState = {
+  lightsOn: true,
+  lightEffect: "crossfade",
+  speedMs: 800,
+  intensity: 65,
+  steadyChannels: { red: 65, yellow: 65, blue: 65 },
+  rotationOn: true,
+  rotationSpeed: 1,
+  lastPayload: null,
+};
 
 const VOICE_HOLD_DELAY = 1500;
 const MIN_VOICE_DURATION = 800;
@@ -257,6 +340,7 @@ function setDeviceMenuOpen(isOpen) {
 function toggleDeviceMenu(event) {
   event.stopPropagation();
   closeBrightnessPopover();
+  closeSceneControlPanel();
   closeVoiceReviewPanel(false);
   setDeviceMenuOpen(!app.classList.contains("device-menu-open"));
 }
@@ -340,6 +424,327 @@ function showControlToast(message) {
     controlToast.classList.remove("is-open");
     controlToast.setAttribute("aria-hidden", "true");
   }, 1800);
+}
+
+function clampNumber(value, min, max, fallback) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) return fallback;
+  return Math.max(min, Math.min(max, numberValue));
+}
+
+function getModeDeviceDefault(modeName = app.dataset.mode) {
+  return modeDeviceDefaults[modeName] || modeDeviceDefaults.story;
+}
+
+function getChannelValues(intensity) {
+  const value = clampNumber(intensity, 0, 100, 65);
+  return { white: value, yellow: value, blue: value };
+}
+
+function getSteadyChannelsFromIntensity(intensity) {
+  const value = Math.round(clampNumber(intensity, 0, 100, 65));
+  return { red: value, yellow: value, blue: value };
+}
+
+function normalizeSteadyChannels(channels = deviceControlState.steadyChannels, fallbackIntensity = deviceControlState.intensity) {
+  const fallback = Math.round(clampNumber(fallbackIntensity, 0, 100, 65));
+  return {
+    red: Math.round(clampNumber(channels?.red, 0, 100, fallback)),
+    yellow: Math.round(clampNumber(channels?.yellow, 0, 100, fallback)),
+    blue: Math.round(clampNumber(channels?.blue, 0, 100, fallback)),
+  };
+}
+
+function getSteadyChannelValues(channels = deviceControlState.steadyChannels) {
+  const normalizedChannels = normalizeSteadyChannels(channels);
+  return {
+    white: normalizedChannels.red,
+    yellow: normalizedChannels.yellow,
+    blue: normalizedChannels.blue,
+  };
+}
+
+function getSteadyChannelAverage(channels = deviceControlState.steadyChannels) {
+  const normalizedChannels = normalizeSteadyChannels(channels);
+  return Math.round((normalizedChannels.red + normalizedChannels.yellow + normalizedChannels.blue) / 3);
+}
+
+function createMcpPayload(id, name, args = {}) {
+  return {
+    type: "mcp",
+    payload: {
+      jsonrpc: "2.0",
+      id,
+      method: "tools/call",
+      params: { name, arguments: args },
+    },
+  };
+}
+
+function buildBrightnessPayload(intensity = deviceControlState.intensity, channels = null) {
+  const channelValues = channels ? getSteadyChannelValues(channels) : getChannelValues(intensity);
+  return createMcpPayload("prototype-brightness", "self.wby_rgb.set_channels", channelValues);
+}
+
+function buildLightPayload() {
+  if (deviceControlState.lightEffect === "steady") {
+    return [buildBrightnessPayload(deviceControlState.intensity, deviceControlState.steadyChannels)];
+  }
+
+  return [
+    createMcpPayload("prototype-effect", "self.wby_rgb.set_effect", {
+      effect: deviceControlState.lightEffect,
+      speed_ms: deviceControlState.speedMs,
+      intensity: deviceControlState.intensity,
+    }),
+    buildBrightnessPayload(),
+  ];
+}
+
+function buildPrototypeDevicePayload(action = "state") {
+  if (action === "all-off") {
+    return [
+      createMcpPayload("prototype-lights-off", "self.wby_rgb.off"),
+      createMcpPayload("prototype-motor-stop", "self.motor.stop"),
+    ];
+  }
+
+  if (action === "rotation-stop") {
+    return createMcpPayload("prototype-motor-stop", "self.motor.stop");
+  }
+
+  const payloads = [];
+
+  if (deviceControlState.lightsOn) {
+    payloads.push(...buildLightPayload());
+  } else {
+    payloads.push(createMcpPayload("prototype-lights-off", "self.wby_rgb.off"));
+  }
+
+  if (deviceControlState.rotationOn) {
+    payloads.push(
+      createMcpPayload("prototype-motor-start", "self.motor.start"),
+      createMcpPayload("prototype-motor-speed", "self.motor.adjust_speed", { speed: deviceControlState.rotationSpeed }),
+    );
+  } else {
+    payloads.push(createMcpPayload("prototype-motor-stop", "self.motor.stop"));
+  }
+
+  return payloads;
+}
+
+function setLightPanelOpen(isOpen) {
+  if (!lightControlPanel) return;
+
+  lightControlPanel.classList.toggle("is-open", isOpen);
+  lightControlPanel.setAttribute("aria-hidden", String(!isOpen));
+}
+
+function setRotationPanelOpen(isOpen) {
+  if (!rotationControlPanel) return;
+
+  rotationControlPanel.classList.toggle("is-open", isOpen);
+  rotationControlPanel.setAttribute("aria-hidden", String(!isOpen));
+}
+
+function closeSceneControlPanel() {
+  setLightPanelOpen(false);
+  setRotationPanelOpen(false);
+}
+
+function updateDeviceControlUi() {
+  const lightLabel = deviceControlState.lightsOn ? lightEffectLabels[deviceControlState.lightEffect] : "已关闭";
+  const rotationLabel = deviceControlState.rotationOn ? rotationSpeedLabels[deviceControlState.rotationSpeed] : rotationSpeedLabels[0];
+  const steadyChannels = normalizeSteadyChannels(deviceControlState.steadyChannels);
+
+  app.dataset.lightScene = deviceControlState.lightsOn ? deviceControlState.lightEffect : "lights-off";
+  app.dataset.rotationState = deviceControlState.rotationOn ? String(deviceControlState.rotationSpeed) : "stopped";
+
+  lightEffectButtons.forEach((button) => {
+    const isActive = deviceControlState.lightsOn && button.dataset.lightEffect === deviceControlState.lightEffect;
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  rotationSpeedButtons.forEach((button) => {
+    const isActive = button.dataset.rotationSpeed === (deviceControlState.rotationOn ? String(deviceControlState.rotationSpeed) : "0");
+    button.classList.toggle("is-active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+
+  if (effectSpeedRange) effectSpeedRange.value = String(deviceControlState.speedMs);
+  if (lightIntensityRange) lightIntensityRange.value = String(deviceControlState.intensity);
+  if (steadyRedRange) steadyRedRange.value = String(steadyChannels.red);
+  if (steadyYellowRange) steadyYellowRange.value = String(steadyChannels.yellow);
+  if (steadyBlueRange) steadyBlueRange.value = String(steadyChannels.blue);
+  if (effectSpeedValue) effectSpeedValue.textContent = `${deviceControlState.speedMs}ms`;
+  if (lightIntensityValue) lightIntensityValue.textContent = `${deviceControlState.intensity}%`;
+  if (steadyRedValue) steadyRedValue.textContent = `${steadyChannels.red}%`;
+  if (steadyYellowValue) steadyYellowValue.textContent = `${steadyChannels.yellow}%`;
+  if (steadyBlueValue) steadyBlueValue.textContent = `${steadyChannels.blue}%`;
+  if (lightQuickValue) lightQuickValue.textContent = lightLabel;
+  if (rotationQuickValue) rotationQuickValue.textContent = rotationLabel;
+  if (lightModeStatus) lightModeStatus.textContent = lightLabel;
+  if (projectionMotionStatus) projectionMotionStatus.textContent = rotationLabel;
+
+  if (lightPanelHint) {
+    if (!deviceControlState.lightsOn) {
+      lightPanelHint.textContent = "灯光已关闭，可点击开启场景效果恢复当前模式默认值";
+    } else if (deviceControlState.lightEffect === "steady") {
+      lightPanelHint.textContent = "当前为长亮，可分别调节红黄蓝亮度";
+    } else {
+      lightPanelHint.textContent = `当前为${lightLabel}，亮度 ${deviceControlState.intensity}%`;
+    }
+  }
+  if (rotationPanelHint) {
+    rotationPanelHint.textContent = deviceControlState.rotationOn ? `当前投影旋转为${rotationLabel}` : "投影旋转已停止，灯光保持当前状态";
+  }
+
+  lightSceneButton?.classList.toggle("is-on", deviceControlState.lightsOn);
+  rotationControlButton?.classList.toggle("is-on", deviceControlState.rotationOn);
+  sceneEffectOnButton?.classList.toggle("is-on", deviceControlState.lightsOn && deviceControlState.rotationOn);
+  sceneEffectOffButton?.classList.toggle("is-on", !deviceControlState.lightsOn && !deviceControlState.rotationOn);
+}
+
+function applyModeDeviceDefaults(modeName = app.dataset.mode, options = {}) {
+  const defaults = getModeDeviceDefault(modeName);
+
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: true,
+    lightEffect: defaults.lightEffect,
+    speedMs: defaults.speedMs,
+    intensity: defaults.intensity,
+    steadyChannels: getSteadyChannelsFromIntensity(defaults.intensity),
+    rotationOn: true,
+    rotationSpeed: defaults.rotationSpeed,
+  };
+  deviceControlState.lastPayload = buildPrototypeDevicePayload();
+  updateDeviceControlUi();
+
+  if (!options.silent) {
+    showControlToast(options.message || defaults.toast);
+  }
+}
+
+function openLightControlPanel(event) {
+  event?.stopPropagation();
+  setDeviceMenuOpen(false);
+  closeVoiceReviewPanel(false);
+  closeMenu();
+  setRotationPanelOpen(false);
+  setLightPanelOpen(true);
+}
+
+function openRotationControlPanel(event) {
+  event?.stopPropagation();
+  setDeviceMenuOpen(false);
+  closeVoiceReviewPanel(false);
+  closeMenu();
+  setLightPanelOpen(false);
+  setRotationPanelOpen(true);
+}
+
+function updateLightEffect(effectName) {
+  if (!lightEffectLabels[effectName] || isOffline) return;
+
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: true,
+    lightEffect: effectName,
+    steadyChannels:
+      effectName === "steady"
+        ? normalizeSteadyChannels(deviceControlState.steadyChannels, deviceControlState.intensity)
+        : deviceControlState.steadyChannels,
+  };
+  deviceControlState.lastPayload = buildPrototypeDevicePayload();
+  updateDeviceControlUi();
+  showControlToast(`已切换${lightEffectLabels[effectName]}`);
+}
+
+function updateEffectSpeed(value) {
+  if (isOffline) return;
+
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: true,
+    speedMs: Math.round(clampNumber(value, 50, 2000, 800)),
+  };
+  deviceControlState.lastPayload = buildPrototypeDevicePayload();
+  updateDeviceControlUi();
+}
+
+function updateLightIntensity(value) {
+  if (isOffline) return;
+
+  const intensity = Math.round(clampNumber(value, 1, 100, 65));
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: true,
+    intensity,
+    steadyChannels:
+      deviceControlState.lightEffect === "steady"
+        ? getSteadyChannelsFromIntensity(intensity)
+        : deviceControlState.steadyChannels,
+  };
+  deviceControlState.lastPayload =
+    deviceControlState.lightEffect === "steady"
+      ? buildBrightnessPayload(deviceControlState.intensity, deviceControlState.steadyChannels)
+      : buildBrightnessPayload(deviceControlState.intensity);
+  updateDeviceControlUi();
+}
+
+function updateSteadyChannel(channelName, value) {
+  if (isOffline || !["red", "yellow", "blue"].includes(channelName)) return;
+
+  const steadyChannels = normalizeSteadyChannels(deviceControlState.steadyChannels);
+  steadyChannels[channelName] = Math.round(clampNumber(value, 0, 100, steadyChannels[channelName]));
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: true,
+    lightEffect: "steady",
+    steadyChannels,
+    intensity: getSteadyChannelAverage(steadyChannels),
+  };
+  deviceControlState.lastPayload = buildBrightnessPayload(deviceControlState.intensity, steadyChannels);
+  updateDeviceControlUi();
+}
+
+function updateRotationSpeed(speed) {
+  if (isOffline) return;
+
+  const numericSpeed = Math.round(clampNumber(speed, 0, 3, 1));
+  deviceControlState = {
+    ...deviceControlState,
+    rotationOn: numericSpeed > 0,
+    rotationSpeed: numericSpeed > 0 ? numericSpeed : deviceControlState.rotationSpeed,
+  };
+  deviceControlState.lastPayload = numericSpeed > 0 ? buildPrototypeDevicePayload() : buildPrototypeDevicePayload("rotation-stop");
+  updateDeviceControlUi();
+  showControlToast(numericSpeed > 0 ? `投影旋转已切换为${rotationSpeedLabels[numericSpeed]}` : "投影旋转已停止");
+}
+
+function stopProjectionRotation() {
+  updateRotationSpeed(0);
+}
+
+function turnOffSceneEffects() {
+  if (isOffline) return;
+
+  deviceControlState = {
+    ...deviceControlState,
+    lightsOn: false,
+    rotationOn: false,
+  };
+  deviceControlState.lastPayload = buildPrototypeDevicePayload("all-off");
+  updateDeviceControlUi();
+  showControlToast("场景效果已关闭");
+}
+
+function restoreSceneEffects() {
+  if (isOffline) return;
+
+  applyModeDeviceDefaults(app.dataset.mode, { message: "已开启当前模式场景效果" });
 }
 
 function stopDevicePlayback() {
@@ -529,6 +934,7 @@ function armVoiceRecording(event) {
   event?.preventDefault();
   closeVoiceReviewPanel(false);
   closeBrightnessPopover();
+  closeSceneControlPanel();
   setDeviceMenuOpen(false);
   closeMenu();
   isVoiceArming = true;
@@ -759,6 +1165,8 @@ function setActiveMode(modeName) {
     dot.classList.toggle("is-active", index === mode.dot);
   });
 
+  applyModeDeviceDefaults(modeName, { silent: !hasRenderedMode });
+
   if (hasRenderedMode) {
     triggerModeSwitchMotion(modeName);
   }
@@ -769,6 +1177,7 @@ function setActiveMode(modeName) {
 function openMenu() {
   setDeviceMenuOpen(false);
   closeBrightnessPopover();
+  closeSceneControlPanel();
   closeVoiceReviewPanel(false);
   app.classList.add("menu-open");
   sideMenu.setAttribute("aria-hidden", "false");
@@ -853,6 +1262,7 @@ function showModalPanel(panelName) {
 
 function openModal(panelName, triggerElement) {
   closeMenu();
+  closeSceneControlPanel();
   closeVoiceReviewPanel(false);
   lastFocusedElement = triggerElement || document.activeElement;
   showModalPanel(panelName);
@@ -1315,6 +1725,7 @@ window.addEventListener("resize", resizeStage);
 resizeStage();
 updateBrightness(brightnessValue);
 setActiveMode(app.dataset.mode || "story");
+updateDeviceControlUi();
 
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => setActiveMode(card.dataset.mode));
@@ -1342,6 +1753,11 @@ document.addEventListener("keydown", (event) => {
     setDeviceMenuOpen(false);
     deviceSwitcherButton?.focus();
   }
+
+  if (event.key === "Escape" && (lightControlPanel?.classList.contains("is-open") || rotationControlPanel?.classList.contains("is-open"))) {
+    closeSceneControlPanel();
+    lightSceneButton?.focus();
+  }
 });
 
 document.addEventListener("click", (event) => {
@@ -1351,6 +1767,14 @@ document.addEventListener("click", (event) => {
 
   if (radialPopover?.classList.contains("is-open") && !event.target.closest(".radial-popover") && !event.target.closest('[data-control="brightness"]')) {
     closeBrightnessPopover();
+  }
+
+  if (lightControlPanel?.classList.contains("is-open") && !event.target.closest(".light-control-panel") && !event.target.closest('[data-control="light"]')) {
+    setLightPanelOpen(false);
+  }
+
+  if (rotationControlPanel?.classList.contains("is-open") && !event.target.closest(".rotation-control-panel") && !event.target.closest('[data-control="rotation"]')) {
+    setRotationPanelOpen(false);
   }
 });
 
@@ -1408,16 +1832,33 @@ if (!isOffline) {
     }
   });
 
-  document.querySelector('[data-control="brightness"]')?.addEventListener("click", openBrightnessPopover);
-  brightnessRange?.addEventListener("input", (event) => {
-    updateBrightness(event.currentTarget.value);
-    scheduleBrightnessClose();
+  lightSceneButton?.addEventListener("click", openLightControlPanel);
+  closeLightPanelButton?.addEventListener("click", () => setLightPanelOpen(false));
+  closeRotationPanelButton?.addEventListener("click", () => setRotationPanelOpen(false));
+  turnOffSceneEffectsButton?.addEventListener("click", turnOffSceneEffects);
+  sceneEffectOnButton?.addEventListener("click", restoreSceneEffects);
+  sceneEffectOffButton?.addEventListener("click", turnOffSceneEffects);
+  lightEffectButtons.forEach((button) => {
+    button.addEventListener("click", () => updateLightEffect(button.dataset.lightEffect));
   });
-  brightnessRange?.addEventListener("pointerdown", () => {
-    clearTimeout(brightnessCloseTimer);
+  rotationSpeedButtons.forEach((button) => {
+    button.addEventListener("click", () => updateRotationSpeed(button.dataset.rotationSpeed));
   });
-  brightnessRange?.addEventListener("pointerup", () => {
-    scheduleBrightnessClose();
+  rotationControlButton?.addEventListener("click", openRotationControlPanel);
+  effectSpeedRange?.addEventListener("input", (event) => {
+    updateEffectSpeed(event.currentTarget.value);
+  });
+  lightIntensityRange?.addEventListener("input", (event) => {
+    updateLightIntensity(event.currentTarget.value);
+  });
+  steadyRedRange?.addEventListener("input", (event) => {
+    updateSteadyChannel("red", event.currentTarget.value);
+  });
+  steadyYellowRange?.addEventListener("input", (event) => {
+    updateSteadyChannel("yellow", event.currentTarget.value);
+  });
+  steadyBlueRange?.addEventListener("input", (event) => {
+    updateSteadyChannel("blue", event.currentTarget.value);
   });
 
   voiceButton?.addEventListener("pointerdown", armVoiceRecording);
@@ -1448,10 +1889,6 @@ if (!isOffline) {
     if (voicePlayButton) {
       voicePlayButton.textContent = "试听";
     }
-  });
-
-  document.querySelector('[data-control="night-light"]')?.addEventListener("click", (event) => {
-    event.currentTarget.classList.toggle("is-on");
   });
 
 }
