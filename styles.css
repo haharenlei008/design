@@ -686,6 +686,11 @@ button {
 .mode-card {
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  min-height: 228px;
+  width: 100%;
   padding: 0;
   border-radius: 26px;
   background: rgba(255, 255, 255, 0.08);
@@ -699,6 +704,11 @@ button {
   transform: scale(0.96);
 }
 
+.mode-card-pattern {
+  position: absolute;
+  inset: 0;
+}
+
 .mode-card img {
   position: absolute;
   inset: 0;
@@ -709,6 +719,7 @@ button {
 }
 
 .mode-card::after {
+  z-index: 1;
   content: "";
   position: absolute;
   left: 0;
@@ -718,21 +729,43 @@ button {
   background: linear-gradient(180deg, rgba(28, 24, 31, 0), rgba(21, 20, 32, 0.78) 42%, rgba(22, 20, 31, 0.9));
 }
 
-.mode-card span {
+.mode-card-copy {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 27px;
   z-index: 1;
-  color: #fff6d7;
-  font-size: 31px;
-  font-weight: 500;
-  line-height: 1;
+  display: -webkit-box;
+  max-width: 100%;
+  padding: 0 16px;
+  overflow: hidden;
+  color: #fff8df;
+  font-size: clamp(24px, 3.1vw, 31px);
+  font-weight: 620;
+  line-height: 1.18;
   text-align: center;
-  letter-spacing: 0;
-  text-shadow: 0 2px 9px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.02em;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  text-shadow:
+    0 2px 9px rgba(0, 0, 0, 0.52),
+    0 0 12px rgba(0, 0, 0, 0.46);
+  filter: drop-shadow(0 1px 8px rgba(0, 0, 0, 0.36));
 }
 
+
+.mode-card-copy::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: -10px;
+  height: 112px;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 0%, rgba(17, 16, 31, 0.08), rgba(17, 16, 31, 0.62) 46%, rgba(17, 16, 31, 0.84));
+  z-index: -1;
+  pointer-events: none;
+}
 .mode-card.is-active {
   border-color: rgba(255, 237, 159, 0.98);
   box-shadow:
@@ -741,7 +774,7 @@ button {
     inset 0 0 20px rgba(255, 250, 206, 0.2);
 }
 
-.mode-card.is-active img {
+.mode-card.is-active .mode-card-pattern img {
   transform: scale(1.035);
   filter: saturate(1.05) brightness(1.04);
 }
@@ -755,6 +788,7 @@ button {
 }
 
 .mode-card.is-active::before {
+  pointer-events: none;
   content: "";
   position: absolute;
   z-index: 2;
