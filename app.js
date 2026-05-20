@@ -1154,6 +1154,7 @@ function setActiveMode(modeName) {
 
   if (isSameMode) {
     pulseModeCard(modeName);
+    showControlToast(`当前已是${mode.title}`);
     return;
   }
 
