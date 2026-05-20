@@ -201,6 +201,11 @@ const generateInput = document.getElementById("generateInput");
 const generateError = document.getElementById("generateError");
 const cancelGenerateButton = document.getElementById("cancelGenerateButton");
 const submitGenerateButton = document.getElementById("submitGenerateButton");
+const generatedTranscriptInput = document.getElementById("generatedTranscriptInput");
+const transcriptError = document.getElementById("transcriptError");
+const backToGenerateButton = document.getElementById("backToGenerateButton");
+const regenerateTranscriptButton = document.getElementById("regenerateTranscriptButton");
+const confirmTranscriptButton = document.getElementById("confirmTranscriptButton");
 const cancelAiLoadingButton = document.getElementById("cancelAiLoadingButton");
 const loadingStage = document.getElementById("loadingStage");
 const aiAudioCard = document.getElementById("aiAudioCard");
@@ -212,6 +217,8 @@ const aiAudioProgressBar = document.getElementById("aiAudioProgressBar");
 const aiAudioCurrentTime = document.getElementById("aiAudioCurrentTime");
 const aiAudioDurationTime = document.getElementById("aiAudioDurationTime");
 const aiAudioStreamStatus = document.getElementById("aiAudioStreamStatus");
+const aiTranscriptText = document.getElementById("aiTranscriptText");
+const editTranscriptButton = document.getElementById("editTranscriptButton");
 const regenerateAudioButton = document.getElementById("regenerateAudioButton");
 const closeAudioPreviewButton = document.getElementById("closeAudioPreviewButton");
 const sendGeneratedAudioButton = document.getElementById("sendGeneratedAudioButton");
@@ -258,6 +265,7 @@ const modeEffectsConfig = {
 const modalTitleIds = {
   random: "randomModalTitle",
   generate: "generateModalTitle",
+  "text-preview": "transcriptPreviewModalTitle",
   loading: "loadingModalTitle",
   "audio-preview": "audioPreviewModalTitle",
   sending: "sendingModalTitle",
@@ -273,6 +281,9 @@ let aiStreamTimer = null;
 let sendTimer = null;
 let pendingSendItem = null;
 let generatedPrompt = "";
+let generatedTranscript = "";
+let confirmedTranscript = "";
+let transcriptVersion = 0;
 let aiAudioUrl = "";
 let aiAudioBlob = null;
 let aiAudioDurationMs = 0;
@@ -1276,14 +1287,49 @@ function openModal(panelName, triggerElement) {
   });
 }
 
+function getTranscriptModeName() {
+  const mode = modes[app.dataset.mode] || modes.story;
+  return mode.title.replace(/^[^\u4e00-\u9fa5A-Za-z0-9]+/, "").trim() || "故事模式";
+}
+
+function getTranscriptTopic(prompt) {
+  const source = prompt.replace(/\s+/g, " ").trim() || "一段温暖的睡前陪伴";
+  return source.length > 20 ? `${source.slice(0, 20)}...` : source;
+}
+
+function buildPrototypeTranscript(prompt, version = 0) {
+  const topic = getTranscriptTopic(prompt);
+  const modeName = getTranscriptModeName();
+  const variants = [
+    `开场：今晚的小投影灯亮起来啦，我们要听的是“${topic}”。\n\n第一段：宝宝先深呼吸一下，看着墙上的小星星慢慢变亮。故事里的小伙伴也准备出发，它带着一点勇气、一点好奇，还有一颗想回家的温柔心。\n\n第二段：路上有轻轻的风、会发光的云，还有一扇只为好孩子打开的小门。每走一步，小伙伴都会想起宝宝的笑声，于是它不害怕了。\n\n结尾：最后，星星把路照亮，月亮把晚安送到枕边。小伙伴找到答案，也把一个甜甜的梦留给宝宝。晚安，我们明天再继续。`,
+    `开场：现在进入${modeName}，这次的主题是“${topic}”。\n\n第一段：灯光轻轻转动，像把房间变成一个小小舞台。宝宝可以闭上眼睛，听见远处有一串暖暖的脚步声，正朝着月亮的方向走来。\n\n第二段：它遇见会唱歌的小路、会眨眼的窗户，还有愿意分享光芒的小星星。每一个朋友都说，慢慢来，最好的答案会在安静里出现。\n\n结尾：当最后一束光落在被角上，故事也轻轻停下。愿宝宝带着这份安心，睡进一个软软的好梦里。`,
+    `开场：投影灯收到宝宝的愿望啦，这段音频会围绕“${topic}”展开。\n\n第一段：我们先把声音放轻，把心情放慢。想象一只小小的光点从天花板出发，绕过星河，来到宝宝身边。\n\n第二段：光点讲了一个秘密：勇敢不是跑得最快，而是在想念家的时候，还记得向前走一点点。宝宝听着听着，也会发现自己心里有一盏亮亮的小灯。\n\n结尾：现在，小灯陪宝宝安静下来。故事到这里先说晚安，剩下的美梦，就交给月亮继续播放。`,
+  ];
+
+  return variants[version % variants.length];
+}
+
+function syncTranscriptPreview() {
+  if (generatedTranscriptInput) {
+    generatedTranscriptInput.value = generatedTranscript;
+  }
+  if (aiTranscriptText) {
+    aiTranscriptText.textContent = confirmedTranscript || generatedTranscript || "确认文案后会显示在这里。";
+  }
+}
+
+function getTranscriptForAudio() {
+  return confirmedTranscript.trim() || generatedTranscript.trim() || generatedPrompt.trim();
+}
+
 function getGeneratedAudioTitle() {
-  const source = generatedPrompt.trim();
+  const source = getTranscriptForAudio();
   return source.length > 12 ? `${source.slice(0, 12)}…` : source || "AI 内容";
 }
 
 function getGeneratedPromptPreview() {
-  const source = generatedPrompt.trim();
-  return source.length > 36 ? `生成要求：${source.slice(0, 36)}…` : `生成要求：${source || "AI 创作内容"}`;
+  const source = getTranscriptForAudio();
+  return source.length > 36 ? `音频文本：${source.slice(0, 36)}…` : `音频文本：${source || "AI 创作内容"}`;
 }
 
 function getAiPlayButtonIdleText() {
@@ -1360,15 +1406,16 @@ function updateAiAudioTime() {
 function updateAiAudioCopy(statusText) {
   if (aiAudioTitle) {
     aiAudioTitle.textContent = getGeneratedAudioTitle();
-    aiAudioTitle.title = generatedPrompt;
+    aiAudioTitle.title = getTranscriptForAudio();
   }
   if (aiAudioPromptPreview) {
     aiAudioPromptPreview.textContent = getGeneratedPromptPreview();
-    aiAudioPromptPreview.title = `生成要求：${generatedPrompt}`;
+    aiAudioPromptPreview.title = `音频文本：${getTranscriptForAudio()}`;
   }
   if (aiAudioStreamStatus) {
     aiAudioStreamStatus.textContent = statusText;
   }
+  syncTranscriptPreview();
 }
 
 function clearAiAudioPreview(resetPrompt = false) {
@@ -1398,6 +1445,7 @@ function clearAiAudioPreview(resetPrompt = false) {
   if (aiAudioStreamStatus) {
     aiAudioStreamStatus.textContent = "正在等待后端开始传输音频流";
   }
+  syncTranscriptPreview();
   if (playGeneratedAudioButton) {
     playGeneratedAudioButton.textContent = "等待音频流";
     playGeneratedAudioButton.disabled = true;
@@ -1408,9 +1456,19 @@ function clearAiAudioPreview(resetPrompt = false) {
 
   if (resetPrompt) {
     generatedPrompt = "";
+    generatedTranscript = "";
+    confirmedTranscript = "";
+    transcriptVersion = 0;
     if (generateInput) {
       generateInput.value = "";
     }
+    if (generatedTranscriptInput) {
+      generatedTranscriptInput.value = "";
+    }
+    if (transcriptError) {
+      transcriptError.textContent = "";
+    }
+    syncTranscriptPreview();
   }
 }
 
@@ -1474,7 +1532,7 @@ function startSendToDevice(item) {
 function closeModal() {
   if (currentModalPanel === "loading" || currentModalPanel === "sending") return;
 
-  const shouldResetGenerate = currentModalPanel === "generate" || currentModalPanel === "audio-preview";
+  const shouldResetGenerate = currentModalPanel === "generate" || currentModalPanel === "text-preview" || currentModalPanel === "audio-preview";
   clearRandomPreview();
   clearGenerateSimulation({ resetAudio: true, resetPrompt: shouldResetGenerate });
   clearSendSimulation();
@@ -1527,6 +1585,90 @@ function openGenerateModal(event) {
   generateError.textContent = "";
   pendingSendItem = null;
   openModal("generate", event.currentTarget);
+}
+
+function openTranscriptPreview() {
+  syncTranscriptPreview();
+  if (transcriptError) {
+    transcriptError.textContent = "";
+  }
+  showModalPanel("text-preview");
+  requestAnimationFrame(() => {
+    generatedTranscriptInput?.focus();
+  });
+}
+
+function returnToGeneratePrompt() {
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
+  if (generateInput) {
+    generateInput.value = generatedPrompt;
+  }
+  if (generateError) {
+    generateError.textContent = "";
+  }
+  showModalPanel("generate");
+  requestAnimationFrame(() => {
+    generateInput?.focus();
+  });
+}
+
+function regenerateTranscriptPreview() {
+  const prompt = generatedPrompt.trim() || generateInput?.value.trim() || "";
+
+  if (!prompt) {
+    showModalPanel("generate");
+    if (generateError) {
+      generateError.textContent = "先告诉我想生成什么内容吧";
+    }
+    requestAnimationFrame(() => {
+      generateInput?.focus();
+    });
+    return;
+  }
+
+  generatedPrompt = prompt;
+  transcriptVersion += 1;
+  generatedTranscript = buildPrototypeTranscript(generatedPrompt, transcriptVersion);
+  confirmedTranscript = "";
+  clearAiAudioPreview(false);
+  openTranscriptPreview();
+}
+
+function confirmTranscriptAndGenerateAudio() {
+  const transcript = generatedTranscriptInput?.value.trim() || "";
+
+  if (!transcript) {
+    if (transcriptError) {
+      transcriptError.textContent = "对应文本不能为空";
+    }
+    generatedTranscriptInput?.focus();
+    return;
+  }
+
+  generatedTranscript = transcript;
+  confirmedTranscript = transcript;
+  clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
+  syncTranscriptPreview();
+  generateButton.classList.add("is-thinking");
+  loadingStage.textContent = loadingStages[0];
+  showModalPanel("loading");
+  appModal.focus();
+  simulateGenerateRequest();
+}
+
+function editConfirmedTranscript() {
+  const editableTranscript = confirmedTranscript || generatedTranscript;
+
+  if (!editableTranscript.trim()) {
+    showControlToast("请先生成对应文本");
+    return;
+  }
+
+  stopGeneratedAudioPlayback();
+  generatedTranscript = editableTranscript;
+  confirmedTranscript = "";
+  clearAiAudioPreview(false);
+  openTranscriptPreview();
 }
 
 function completeAiAudioStream() {
@@ -1646,7 +1788,7 @@ async function toggleGeneratedAudioPlayback() {
 }
 
 function sendGeneratedAudioToDevice() {
-  if (aiAudioState !== "stream-complete" || !aiAudioBlob) {
+  if (aiAudioState !== "stream-complete" || !aiAudioBlob || !confirmedTranscript.trim()) {
     showControlToast("请等待音频流传输完成");
     return;
   }
@@ -1676,6 +1818,10 @@ function simulateGenerateRequest() {
 
 function cancelAiGeneration() {
   clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
+  if (generatedTranscript.trim()) {
+    openTranscriptPreview();
+    return;
+  }
   showModalPanel("generate");
   requestAnimationFrame(() => {
     generateInput?.focus();
@@ -1683,7 +1829,11 @@ function cancelAiGeneration() {
 }
 
 function regenerateAiAudio() {
-  if (!generatedPrompt.trim()) {
+  if (!confirmedTranscript.trim()) {
+    if (generatedTranscript.trim()) {
+      openTranscriptPreview();
+      return;
+    }
     showModalPanel("generate");
     requestAnimationFrame(() => {
       generateInput?.focus();
@@ -1693,7 +1843,6 @@ function regenerateAiAudio() {
 
   generateInput.value = generatedPrompt;
   clearGenerateSimulation({ resetAudio: true, resetPrompt: false });
-  submitGenerateButton.disabled = true;
   generateButton.classList.add("is-thinking");
   loadingStage.textContent = loadingStages[0];
   showModalPanel("loading");
@@ -1711,14 +1860,12 @@ function submitGeneratePrompt() {
   }
 
   generatedPrompt = prompt;
+  transcriptVersion = 0;
+  generatedTranscript = buildPrototypeTranscript(generatedPrompt, transcriptVersion);
+  confirmedTranscript = "";
   generateError.textContent = "";
   clearAiAudioPreview(false);
-  submitGenerateButton.disabled = true;
-  generateButton.classList.add("is-thinking");
-  loadingStage.textContent = loadingStages[0];
-  showModalPanel("loading");
-  appModal.focus();
-  simulateGenerateRequest();
+  openTranscriptPreview();
 }
 
 window.addEventListener("resize", resizeStage);
@@ -1788,8 +1935,12 @@ if (!isOffline) {
   generateButton.addEventListener("click", openGenerateModal);
   cancelGenerateButton.addEventListener("click", closeModal);
   submitGenerateButton.addEventListener("click", submitGeneratePrompt);
+  backToGenerateButton?.addEventListener("click", returnToGeneratePrompt);
+  regenerateTranscriptButton?.addEventListener("click", regenerateTranscriptPreview);
+  confirmTranscriptButton?.addEventListener("click", confirmTranscriptAndGenerateAudio);
   cancelAiLoadingButton?.addEventListener("click", cancelAiGeneration);
   playGeneratedAudioButton?.addEventListener("click", toggleGeneratedAudioPlayback);
+  editTranscriptButton?.addEventListener("click", editConfirmedTranscript);
   regenerateAudioButton?.addEventListener("click", regenerateAiAudio);
   closeAudioPreviewButton?.addEventListener("click", closeModal);
   sendGeneratedAudioButton?.addEventListener("click", sendGeneratedAudioToDevice);
@@ -1824,6 +1975,16 @@ if (!isOffline) {
   generateInput.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       submitGeneratePrompt();
+    }
+  });
+  generatedTranscriptInput?.addEventListener("input", () => {
+    if (transcriptError) {
+      transcriptError.textContent = "";
+    }
+  });
+  generatedTranscriptInput?.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      confirmTranscriptAndGenerateAudio();
     }
   });
   document.addEventListener("keydown", (event) => {

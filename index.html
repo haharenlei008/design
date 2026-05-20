@@ -294,6 +294,22 @@
             </div>
           </div>
 
+          <div class="modal-panel" data-panel="text-preview" aria-live="polite">
+            <div class="modal-kicker">AI 文案</div>
+            <h2 class="modal-title" id="transcriptPreviewModalTitle">先看看音频对应文本</h2>
+            <p class="transcript-preview-hint">可以直接编辑，确认后投影灯会按这版文本生成音频。</p>
+            <label class="transcript-field" for="generatedTranscriptInput">
+              <span>对应文本</span>
+              <textarea id="generatedTranscriptInput" rows="8"></textarea>
+            </label>
+            <p class="generate-error" id="transcriptError" aria-live="polite"></p>
+            <div class="modal-actions transcript-actions">
+              <button class="modal-button secondary" id="backToGenerateButton" type="button">返回修改</button>
+              <button class="modal-button secondary" id="regenerateTranscriptButton" type="button">重新生成文本</button>
+              <button class="modal-button primary" id="confirmTranscriptButton" type="button">确认生成音频</button>
+            </div>
+          </div>
+
           <div class="modal-panel" data-panel="loading" aria-live="polite">
             <div class="loading-orb" aria-hidden="true"></div>
             <h2 class="modal-title" id="loadingModalTitle">正在生成内容</h2>
@@ -331,6 +347,13 @@
               </div>
               <p class="ai-audio-prompt" id="aiAudioStreamStatus">正在等待后端开始传输音频流</p>
             </div>
+            <section class="ai-transcript-card" aria-labelledby="aiTranscriptTitle">
+              <div class="ai-transcript-head">
+                <h3 id="aiTranscriptTitle">对应文本</h3>
+                <button class="transcript-edit-button" id="editTranscriptButton" type="button">编辑文案</button>
+              </div>
+              <p id="aiTranscriptText">确认文案后会显示在这里。</p>
+            </section>
             <div class="modal-actions ai-audio-actions">
               <button class="modal-button secondary" id="regenerateAudioButton" type="button">重新生成</button>
               <button class="modal-button primary" id="sendGeneratedAudioButton" type="button">发送给设备</button>
