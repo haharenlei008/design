@@ -188,6 +188,11 @@ const avatarButton = document.getElementById("avatarButton");
 const menuBackdrop = document.getElementById("menuBackdrop");
 const menuCloseButton = document.querySelector(".menu-close");
 const menuActionButtons = document.querySelectorAll(".menu-action[data-menu-action]");
+const playHistoryPanel = document.getElementById("playHistoryPanel");
+const playHistoryList = document.getElementById("playHistoryList");
+const playHistoryEmpty = document.getElementById("playHistoryEmpty");
+const playHistoryHint = document.getElementById("playHistoryHint");
+const closePlayHistoryButton = document.getElementById("closePlayHistoryButton");
 const modalBackdrop = document.getElementById("modalBackdrop");
 const appModal = document.getElementById("appModal");
 const randomThemeTitle = document.getElementById("randomThemeTitle");
@@ -306,6 +311,7 @@ let hasRenderedMode = false;
 let modeTransitionTimer = null;
 let modeBackgroundTimer = null;
 let modeCardPulseTimer = null;
+let playHistoryRecords = [];
 let deviceControlState = {
   lightsOn: true,
   lightEffect: "crossfade",
@@ -328,6 +334,13 @@ const AI_PREVIEW_MIN_DURATION_MS = 1200;
 const RANDOM_PREVIEW_DURATION_MS = 8000;
 const MODE_BACKGROUND_TRANSITION_MS = 360;
 const MODE_CONTENT_TRANSITION_MS = 320;
+const PLAY_HISTORY_STORAGE_KEY = "ai-projector-play-history-v1";
+const PLAY_HISTORY_MAX_RECORDS = 20;
+const playHistoryTypeLabels = {
+  random: "随机播放",
+  ai: "AI 生成",
+  voice: "语音留言",
+};
 
 function resizeStage() {
   const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
@@ -490,6 +503,295 @@ function createMcpPayload(id, name, args = {}) {
       params: { name, arguments: args },
     },
   };
+}
+
+function cloneDevicePayload(payload) {
+  if (!payload) return null;
+
+  try {
+    return JSON.parse(JSON.stringify(payload));
+  } catch (error) {
+    return null;
+  }
+}
+
+function buildPlayContentPayload(type, title, modeName = app.dataset.mode) {
+  return createMcpPayload(`prototype-play-${type}`, "self.wby_audio.play", {
+    type,
+    title,
+    mode: modeName,
+  });
+}
+
+function createPlayHistoryId(type) {
+  return `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getDefaultPlayHistoryRecords() {
+  const now = Date.now();
+  return [
+    {
+      id: "demo-ai-moon",
+      type: "ai",
+      title: "月亮小火车晚安故事",
+      subtitle: "AI 生成内容 · 已发送到设备",
+      mode: "sleep",
+      durationText: "00:20",
+      createdAt: new Date(now - 1000 * 60 * 24).toISOString(),
+      source: "AI 创作",
+      transcript: "月亮小火车穿过云朵，把晚安星星送到每一扇小窗前。",
+      audioLabel: "睡前故事音频",
+      devicePayload: buildPlayContentPayload("ai", "月亮小火车晚安故事", "sleep"),
+    },
+    {
+      id: "demo-random-stars",
+      type: "random",
+      title: "小星星合唱会",
+      subtitle: "随机播放一首欢快儿歌",
+      mode: "music",
+      durationText: "00:08",
+      createdAt: new Date(now - 1000 * 60 * 92).toISOString(),
+      source: "随机播放",
+      transcript: "",
+      audioLabel: "随机主题片段",
+      devicePayload: buildPlayContentPayload("random", "小星星合唱会", "music"),
+    },
+    {
+      id: "demo-voice-goodnight",
+      type: "voice",
+      title: "宝宝语音留言",
+      subtitle: "录音 00:12 · 已发送到设备",
+      mode: "story",
+      durationText: "00:12",
+      createdAt: new Date(now - 1000 * 60 * 60 * 22).toISOString(),
+      source: "语音留言",
+      transcript: "",
+      audioLabel: "家长语音录音",
+      devicePayload: buildPlayContentPayload("voice", "宝宝语音留言", "story"),
+    },
+  ].map((record, index) => normalizePlayHistoryRecord(record, index));
+}
+
+function normalizePlayHistoryRecord(record = {}, index = 0) {
+  const allowedTypes = Object.keys(playHistoryTypeLabels);
+  const type = allowedTypes.includes(record.type) ? record.type : "random";
+  const modeName = modes[record.mode] ? record.mode : "story";
+  const createdAt = new Date(record.createdAt);
+  const fallbackTitle = playHistoryTypeLabels[type] || "播放内容";
+  const title = String(record.title || fallbackTitle).trim() || fallbackTitle;
+
+  return {
+    id: String(record.id || createPlayHistoryId(type) || `history-${index}`),
+    type,
+    title,
+    subtitle: String(record.subtitle || "").trim(),
+    mode: modeName,
+    durationText: String(record.durationText || "--").trim(),
+    createdAt: Number.isNaN(createdAt.getTime()) ? new Date().toISOString() : createdAt.toISOString(),
+    source: String(record.source || playHistoryTypeLabels[type]).trim(),
+    transcript: String(record.transcript || "").trim(),
+    audioLabel: String(record.audioLabel || "").trim(),
+    devicePayload: cloneDevicePayload(record.devicePayload),
+  };
+}
+
+function loadPlayHistoryRecords() {
+  let storedRecords = null;
+
+  try {
+    storedRecords = window.localStorage?.getItem(PLAY_HISTORY_STORAGE_KEY) ?? null;
+  } catch (error) {
+    storedRecords = null;
+  }
+
+  if (storedRecords === null) {
+    return getDefaultPlayHistoryRecords();
+  }
+
+  try {
+    const parsedRecords = JSON.parse(storedRecords);
+    if (!Array.isArray(parsedRecords)) return [];
+    return parsedRecords.map(normalizePlayHistoryRecord).slice(0, PLAY_HISTORY_MAX_RECORDS);
+  } catch (error) {
+    return getDefaultPlayHistoryRecords();
+  }
+}
+
+function savePlayHistoryRecords() {
+  try {
+    window.localStorage?.setItem(PLAY_HISTORY_STORAGE_KEY, JSON.stringify(playHistoryRecords));
+  } catch (error) {
+    showPlayHistoryHint("当前浏览器暂时无法保存播放记录");
+  }
+}
+
+function formatHistoryCreatedAt(createdAt) {
+  const date = new Date(createdAt);
+  if (Number.isNaN(date.getTime())) return "刚刚";
+
+  const now = new Date();
+  const sameYear = date.getFullYear() === now.getFullYear();
+  const sameMonth = date.getMonth() === now.getMonth();
+  const sameDay = date.getDate() === now.getDate();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  if (sameYear && sameMonth && sameDay) {
+    return `今天 ${hours}:${minutes}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameYear && date.getMonth() === yesterday.getMonth() && date.getDate() === yesterday.getDate()) {
+    return `昨天 ${hours}:${minutes}`;
+  }
+
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${hours}:${minutes}`;
+}
+
+function showPlayHistoryHint(message) {
+  if (!playHistoryHint) return;
+
+  playHistoryHint.textContent = message;
+  if (!message) return;
+
+  clearTimeout(showPlayHistoryHint.timer);
+  showPlayHistoryHint.timer = setTimeout(() => {
+    playHistoryHint.textContent = "";
+  }, 2200);
+}
+
+function setPlayHistoryPanelOpen(isOpen) {
+  if (!playHistoryPanel || !sideMenu) return;
+
+  sideMenu.classList.toggle("is-history-open", isOpen);
+  playHistoryPanel.classList.toggle("is-open", isOpen);
+  playHistoryPanel.setAttribute("aria-hidden", String(!isOpen));
+  if (isOpen) {
+    renderPlayHistory();
+    requestAnimationFrame(() => closePlayHistoryButton?.focus());
+  } else {
+    showPlayHistoryHint("");
+  }
+}
+
+function openPlayHistoryPanel() {
+  setPlayHistoryPanelOpen(true);
+}
+
+function closePlayHistoryPanel() {
+  setPlayHistoryPanelOpen(false);
+  menuActionButtons.forEach((button) => {
+    button.classList.remove("is-selected");
+  });
+}
+
+function createHistoryMetaItem(text) {
+  const item = document.createElement("span");
+  item.textContent = text;
+  return item;
+}
+
+function renderPlayHistory() {
+  if (!playHistoryList || !playHistoryEmpty) return;
+
+  playHistoryList.replaceChildren();
+  playHistoryEmpty.hidden = playHistoryRecords.length > 0;
+
+  playHistoryRecords.forEach((record) => {
+    const item = document.createElement("article");
+    item.className = "history-record";
+    item.setAttribute("role", "listitem");
+    item.dataset.historyId = record.id;
+
+    const head = document.createElement("div");
+    head.className = "history-record-head";
+
+    const titleBlock = document.createElement("div");
+    titleBlock.className = "history-record-title";
+
+    const title = document.createElement("p");
+    title.textContent = record.title;
+    titleBlock.append(title);
+
+    const subtitle = document.createElement("small");
+    subtitle.textContent = record.subtitle || record.audioLabel || playHistoryTypeLabels[record.type];
+    titleBlock.append(subtitle);
+
+    const badge = document.createElement("span");
+    badge.className = `history-type history-type--${record.type}`;
+    badge.textContent = playHistoryTypeLabels[record.type] || "播放内容";
+
+    head.append(titleBlock, badge);
+
+    const meta = document.createElement("div");
+    meta.className = "history-record-meta";
+    meta.append(
+      createHistoryMetaItem(modes[record.mode]?.title || "故事模式"),
+      createHistoryMetaItem(record.source || playHistoryTypeLabels[record.type]),
+      createHistoryMetaItem(record.durationText || "--"),
+      createHistoryMetaItem(formatHistoryCreatedAt(record.createdAt)),
+    );
+
+    const transcript = document.createElement("p");
+    transcript.className = "history-record-transcript";
+    transcript.textContent = record.transcript || record.audioLabel || "暂无文本，仅保留播放记录";
+
+    const replayButton = document.createElement("button");
+    replayButton.className = "history-replay-button";
+    replayButton.type = "button";
+    replayButton.textContent = isOffline ? "设备离线" : "再次播放";
+    replayButton.disabled = isOffline;
+    replayButton.setAttribute("aria-disabled", String(isOffline));
+    replayButton.addEventListener("click", () => replayPlayHistoryRecord(record.id));
+
+    item.append(head, meta, transcript, replayButton);
+    playHistoryList.append(item);
+  });
+}
+
+function addPlayHistoryRecord(type, details = {}) {
+  const modeName = modes[details.mode] ? details.mode : app.dataset.mode || "story";
+  const title = String(details.title || playHistoryTypeLabels[type] || "播放内容").trim();
+  const record = normalizePlayHistoryRecord({
+    id: createPlayHistoryId(type),
+    type,
+    title,
+    subtitle: details.subtitle || "",
+    mode: modeName,
+    durationText: details.durationText || "--",
+    createdAt: new Date().toISOString(),
+    source: details.source || playHistoryTypeLabels[type],
+    transcript: details.transcript || "",
+    audioLabel: details.audioLabel || "",
+    devicePayload: details.devicePayload || buildPlayContentPayload(type, title, modeName),
+  });
+
+  playHistoryRecords = [record, ...playHistoryRecords.filter((item) => item.id !== record.id)].slice(0, PLAY_HISTORY_MAX_RECORDS);
+  savePlayHistoryRecords();
+  renderPlayHistory();
+}
+
+function replayPlayHistoryRecord(recordId) {
+  const record = playHistoryRecords.find((item) => item.id === recordId);
+  if (!record) return;
+
+  if (isOffline) {
+    showPlayHistoryHint("设备离线，暂时不能再次播放");
+    return;
+  }
+
+  lastFocusedElement = avatarButton;
+  closeMenu();
+  startSendToDevice({
+    title: record.title,
+    subtitle: record.subtitle || `${playHistoryTypeLabels[record.type]} · 再次播放`,
+    sendingStage: "正在再次发送到宝宝投影灯",
+    sendingHint: "请保持设备在线，内容马上开始播放",
+    successTitle: "再次播放成功",
+    successCopy: "已发送到投影灯，马上开始播放",
+    skipHistory: true,
+  });
 }
 
 function buildBrightnessPayload(intensity = deviceControlState.intensity, channels = null) {
@@ -1050,6 +1352,7 @@ function sendVoiceToDevice() {
   }
 
   const durationText = formatVoiceTime(voiceDurationMs);
+  const modeName = app.dataset.mode || "story";
   voicePlayback?.pause();
   closeVoiceReviewPanel(true);
   lastFocusedElement = voiceButton;
@@ -1060,6 +1363,17 @@ function sendVoiceToDevice() {
     sendingHint: "请保持设备在线，语音马上播放",
     successTitle: "语音发送成功",
     successCopy: "宝宝语音留言已发送到投影灯，马上开始播放",
+    historyOnSuccess: () =>
+      addPlayHistoryRecord("voice", {
+        title: "宝宝语音留言",
+        subtitle: `录音 ${durationText} · 已发送到设备`,
+        mode: modeName,
+        durationText,
+        source: "语音留言",
+        transcript: "",
+        audioLabel: "家长语音录音",
+        devicePayload: buildPlayContentPayload("voice", "宝宝语音留言", modeName),
+      }),
   });
 }
 
@@ -1191,12 +1505,17 @@ function openMenu() {
   closeBrightnessPopover();
   closeSceneControlPanel();
   closeVoiceReviewPanel(false);
+  setPlayHistoryPanelOpen(false);
   app.classList.add("menu-open");
   sideMenu.setAttribute("aria-hidden", "false");
   avatarButton.setAttribute("aria-expanded", "true");
 }
 
 function closeMenu() {
+  setPlayHistoryPanelOpen(false);
+  menuActionButtons.forEach((button) => {
+    button.classList.remove("is-selected");
+  });
   app.classList.remove("menu-open");
   sideMenu.setAttribute("aria-hidden", "true");
   avatarButton.setAttribute("aria-expanded", "false");
@@ -1206,6 +1525,13 @@ function selectMenuAction(actionName) {
   menuActionButtons.forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.menuAction === actionName);
   });
+
+  if (actionName === "play-history") {
+    openPlayHistoryPanel();
+    return;
+  }
+
+  setPlayHistoryPanelOpen(false);
 }
 
 function getActiveMode() {
@@ -1507,6 +1833,9 @@ function completeSendToDevice() {
   if (pendingSendItem) {
     playTitle.textContent = pendingSendItem.title;
     playSubtitle.textContent = pendingSendItem.subtitle;
+    if (!pendingSendItem.skipHistory && typeof pendingSendItem.historyOnSuccess === "function") {
+      pendingSendItem.historyOnSuccess();
+    }
   }
 
   successModalTitle.textContent = pendingSendItem?.successTitle || "发送成功";
@@ -1576,8 +1905,23 @@ function openRandomPlayModal(event) {
 function confirmRandomPlay() {
   if (!currentRandomItem) return;
 
+  const item = { ...currentRandomItem };
+  const modeName = app.dataset.mode || "story";
   clearRandomPreview();
-  startSendToDevice(currentRandomItem);
+  startSendToDevice({
+    ...item,
+    historyOnSuccess: () =>
+      addPlayHistoryRecord("random", {
+        title: item.title,
+        subtitle: item.subtitle,
+        mode: modeName,
+        durationText: formatVoiceTime(RANDOM_PREVIEW_DURATION_MS),
+        source: "随机播放",
+        transcript: "",
+        audioLabel: "随机主题片段",
+        devicePayload: buildPlayContentPayload("random", item.title, modeName),
+      }),
+  });
 }
 
 function openGenerateModal(event) {
@@ -1794,14 +2138,29 @@ function sendGeneratedAudioToDevice() {
     return;
   }
 
+  const title = getGeneratedAudioTitle();
+  const modeName = app.dataset.mode || "story";
+  const transcript = confirmedTranscript;
+  const prompt = generatedPrompt;
   stopGeneratedAudioPlayback();
   startSendToDevice({
-    title: getGeneratedAudioTitle(),
+    title,
     subtitle: "AI 生成内容 · 已发送到设备",
     sendingStage: "正在发送 AI 内容到宝宝投影灯",
     sendingHint: "请保持设备在线，内容马上开始播放",
     successTitle: "AI 内容发送成功",
     successCopy: "AI 生成内容已发送到投影灯，马上开始播放",
+    historyOnSuccess: () =>
+      addPlayHistoryRecord("ai", {
+        title,
+        subtitle: "AI 生成内容 · 已发送到设备",
+        mode: modeName,
+        durationText: formatVoiceTime(AI_AUDIO_DURATION_MS),
+        source: "AI 创作",
+        transcript,
+        audioLabel: prompt || "AI 生成音频",
+        devicePayload: buildPlayContentPayload("ai", title, modeName),
+      }),
   });
 }
 
@@ -1874,6 +2233,8 @@ resizeStage();
 updateBrightness(brightnessValue);
 setActiveMode(app.dataset.mode || "story");
 updateDeviceControlUi();
+playHistoryRecords = loadPlayHistoryRecords();
+renderPlayHistory();
 
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => setActiveMode(card.dataset.mode));
@@ -1888,6 +2249,7 @@ deviceAddButton?.addEventListener("click", showAddDeviceFeedback);
 avatarButton.addEventListener("click", openMenu);
 menuBackdrop.addEventListener("click", closeMenu);
 menuCloseButton.addEventListener("click", closeMenu);
+closePlayHistoryButton?.addEventListener("click", closePlayHistoryPanel);
 menuActionButtons.forEach((button) => {
   button.addEventListener("click", () => selectMenuAction(button.dataset.menuAction));
 });

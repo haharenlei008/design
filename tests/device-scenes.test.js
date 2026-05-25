@@ -72,5 +72,22 @@ assert(offlineHtml.includes('data-control="rotation" aria-label="切换投影旋
 assert(offlineHtml.match(/data-light-effect="[^"]+" disabled/g)?.length === 4, "offline light options should all be disabled");
 assert(offlineHtml.match(/data-rotation-speed="[^"]+" disabled/g)?.length === 4, "offline rotation options should all be disabled");
 assert(stylesCss.includes(".rotation-stop-button"), "rotation stop button should have standalone styling");
+assert(indexHtml.includes('id="playHistoryPanel"'), "index.html should include playback history panel");
+assert(offlineHtml.includes('id="playHistoryPanel"'), "offline.html should include playback history panel");
+assert(indexHtml.includes('id="playHistoryList"'), "index.html should include playback history list");
+assert(offlineHtml.includes('id="playHistoryList"'), "offline.html should include playback history list");
+assert(indexHtml.includes('id="playHistoryEmpty"'), "index.html should include playback history empty state");
+assert(offlineHtml.includes('id="playHistoryEmpty"'), "offline.html should include playback history empty state");
+assert(indexHtml.includes('data-history-online="true"'), "online page should mark playback history as replay-capable");
+assert(offlineHtml.includes('data-history-online="false"'), "offline page should mark playback history replay as disabled");
+assert(appJs.includes('const PLAY_HISTORY_STORAGE_KEY'), "app.js should define localStorage key for playback history");
+assert(appJs.includes("function renderPlayHistory"), "app.js should render playback history records");
+assert(appJs.includes("function addPlayHistoryRecord"), "app.js should add successful playback records");
+assert(appJs.includes("function replayPlayHistoryRecord"), "app.js should support replaying history records");
+assert(appJs.includes("addPlayHistoryRecord(\"random\""), "random send success should add a playback history record");
+assert(appJs.includes("addPlayHistoryRecord(\"ai\""), "AI send success should add a playback history record");
+assert(appJs.includes("addPlayHistoryRecord(\"voice\""), "voice send success should add a playback history record");
+assert(stylesCss.includes(".history-panel"), "styles.css should style playback history panel");
+assert(stylesCss.includes(".history-record"), "styles.css should style individual playback records");
 
 console.log("device scene prototype checks passed");

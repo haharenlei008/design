@@ -275,7 +275,7 @@
           <section class="menu-section" aria-label="主功能">
             <div class="menu-section-title">主功能</div>
             <div class="menu-primary-grid">
-              <button class="menu-action menu-primary-action" type="button" data-menu-action="play-history">
+              <button class="menu-action menu-primary-action" type="button" data-menu-action="play-history" aria-controls="playHistoryPanel">
                 <span class="menu-action-icon" aria-hidden="true">
                   <svg viewBox="0 0 48 48" focusable="false">
                     <circle cx="24" cy="24" r="15"></circle>
@@ -335,6 +335,23 @@
               </span>
               <span class="menu-action-arrow" aria-hidden="true">›</span>
             </button>
+          </section>
+
+          <section class="history-panel" id="playHistoryPanel" aria-label="播放记录" aria-hidden="true" data-history-online="false">
+            <div class="history-panel-head">
+              <button class="history-back-button" id="closePlayHistoryButton" type="button" aria-label="返回功能中心">‹</button>
+              <div>
+                <p>播放记录</p>
+                <small>最近 20 条已发送内容</small>
+              </div>
+              <span class="history-online-status is-offline">离线仅查看</span>
+            </div>
+            <div class="history-list" id="playHistoryList" role="list" aria-live="polite"></div>
+            <div class="history-empty" id="playHistoryEmpty" hidden>
+              <strong>暂无播放记录</strong>
+              <small>设备在线发送内容后会出现在这里</small>
+            </div>
+            <p class="history-panel-hint" id="playHistoryHint" aria-live="polite"></p>
           </section>
         </aside>
       </main>
