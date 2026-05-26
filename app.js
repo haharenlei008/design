@@ -16,7 +16,6 @@ const modes = {
       { title: "会发光的小鲸鱼", subtitle: "听一段海底晚安故事" },
       { title: "森林邮递员", subtitle: "随机讲一个暖心童话" },
     ],
-    playGlyph: "./图标/图标6.png",
     dot: 0,
   },
   music: {
@@ -33,7 +32,6 @@ const modes = {
       { title: "小兔子的铃铛歌", subtitle: "播放一首轻快儿歌" },
       { title: "太阳公公早安曲", subtitle: "随机开启一段快乐旋律" },
     ],
-    playGlyph: "./图标/图标6.png",
     dot: 0,
   },
   sleep: {
@@ -50,7 +48,6 @@ const modes = {
       { title: "云朵摇篮曲", subtitle: "播放一段安静助眠旋律" },
       { title: "晚安小森林", subtitle: "随机开启睡前陪伴内容" },
     ],
-    playGlyph: "./图标/图标6.png",
     dot: 1,
   },
   parent: {
@@ -67,7 +64,6 @@ const modes = {
       { title: "睡前悄悄话", subtitle: "随机生成一段亲子问答" },
       { title: "手影动物园", subtitle: "一起玩一个投影互动" },
     ],
-    playGlyph: "./图标/图标6.png",
     dot: 2,
   },
 };
@@ -125,7 +121,6 @@ const modeEffects = document.getElementById("modeEffects");
 const modeSymbol = document.getElementById("modeSymbol");
 const modeTitle = document.getElementById("modeTitle");
 const modeSubtitle = document.getElementById("modeSubtitle");
-const playGlyph = document.getElementById("playGlyph");
 const playTitle = document.getElementById("playTitle");
 const playSubtitle = document.getElementById("playSubtitle");
 const aiPrompt = document.getElementById("aiPrompt");
@@ -312,6 +307,7 @@ let modeTransitionTimer = null;
 let modeBackgroundTimer = null;
 let modeCardPulseTimer = null;
 let playHistoryRecords = [];
+let contentLibraryState = { favoriteOfficialIds: [], myItems: [] };
 let deviceControlState = {
   lightsOn: true,
   lightEffect: "crossfade",
@@ -335,11 +331,13 @@ const RANDOM_PREVIEW_DURATION_MS = 8000;
 const MODE_BACKGROUND_TRANSITION_MS = 360;
 const MODE_CONTENT_TRANSITION_MS = 320;
 const PLAY_HISTORY_STORAGE_KEY = "ai-projector-play-history-v1";
+const CONTENT_LIBRARY_STORAGE_KEY = "ai-projector-content-library-v1";
 const PLAY_HISTORY_MAX_RECORDS = 20;
 const playHistoryTypeLabels = {
   random: "随机播放",
   ai: "AI 生成",
   voice: "语音留言",
+  library: "内容库",
 };
 
 function resizeStage() {
@@ -525,6 +523,140 @@ function buildPlayContentPayload(type, title, modeName = app.dataset.mode) {
 
 function createPlayHistoryId(type) {
   return `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function createContentLibraryId(kind) {
+  return `${kind}-content-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function getContentSubcategory(item = {}) {
+  const source = `${item.title || ""} ${item.subtitle || ""} ${item.transcript || ""} ${item.audioLabel || ""}`.toLowerCase();
+
+  if (/晚安|睡|月亮|摇篮|呼吸|安静|梦|放松|goodnight|sleep/.test(source)) {
+    return "goodnight";
+  }
+  if (/儿歌|星星|合唱|节拍|铃铛|太阳|歌|曲|唱|跳|rhythm|music/.test(source)) {
+    return "rhythm";
+  }
+  if (/亲子|一起|猜|找|问答|手影|互动|悄悄话|interaction|parent/.test(source)) {
+    return "interaction";
+  }
+
+  return "adventure";
+}
+
+function normalizeContentLibraryItem(item = {}, index = 0) {
+  const kind = item.kind === "ai" ? "ai" : "official";
+  const modeName = modes[item.mode] ? item.mode : "story";
+  const modeTitle = modes[modeName]?.title || "故事模式";
+  const fallbackTitle = kind === "ai" ? "AI 生成内容" : "官方精选内容";
+  const title = String(item.title || fallbackTitle).trim() || fallbackTitle;
+  const id = String(item.id || (kind === "official" ? `official-${modeName}-${index}` : createContentLibraryId(kind)));
+  const normalizedBase = {
+    title,
+    subtitle: String(item.subtitle || (kind === "ai" ? "AI 生成内容" : `${modeTitle}推荐内容`)).trim(),
+    transcript: String(item.transcript || "").trim(),
+    audioLabel: String(item.audioLabel || title).trim(),
+  };
+
+  return {
+    id,
+    kind,
+    title: normalizedBase.title,
+    subtitle: normalizedBase.subtitle,
+    mode: modeName,
+    durationText: String(item.durationText || (kind === "ai" ? formatVoiceTime(AI_AUDIO_DURATION_MS) : formatVoiceTime(RANDOM_PREVIEW_DURATION_MS))).trim(),
+    source: String(item.source || (kind === "ai" ? "AI 创作" : "官方内容")).trim(),
+    subcategory: item.subcategory || getContentSubcategory(normalizedBase),
+    transcript: normalizedBase.transcript,
+    audioLabel: normalizedBase.audioLabel,
+    devicePayload: cloneDevicePayload(item.devicePayload) || buildPlayContentPayload(kind === "ai" ? "ai" : "library", title, modeName),
+  };
+}
+
+function getOfficialContentItems() {
+  return Object.entries(modes).flatMap(([modeName, mode]) =>
+    (mode.playOptions || []).map((item, index) =>
+      normalizeContentLibraryItem(
+        {
+          id: `official-${modeName}-${index}`,
+          kind: "official",
+          title: item.title,
+          subtitle: item.subtitle,
+          mode: modeName,
+          source: "官方内容",
+          transcript: `${mode.title}精选内容：${item.title}`,
+          audioLabel: item.subtitle,
+          devicePayload: buildPlayContentPayload("library", item.title, modeName),
+        },
+        index,
+      ),
+    ),
+  );
+}
+
+function normalizeContentLibraryState(state = {}) {
+  const officialIds = new Set(getOfficialContentItems().map((item) => item.id));
+  const favoriteOfficialIds = Array.isArray(state.favoriteOfficialIds)
+    ? [...new Set(state.favoriteOfficialIds.map(String))].filter((id) => officialIds.has(id))
+    : [];
+  const myItems = Array.isArray(state.myItems)
+    ? state.myItems
+        .map((item, index) => normalizeContentLibraryItem({ ...item, kind: "ai" }, index))
+        .filter((item) => item.kind === "ai")
+        .slice(0, 20)
+    : [];
+
+  return { favoriteOfficialIds, myItems };
+}
+
+function loadContentLibraryState() {
+  let storedState = null;
+
+  try {
+    storedState = window.localStorage?.getItem(CONTENT_LIBRARY_STORAGE_KEY) ?? null;
+  } catch (error) {
+    storedState = null;
+  }
+
+  if (storedState === null) {
+    return normalizeContentLibraryState();
+  }
+
+  try {
+    return normalizeContentLibraryState(JSON.parse(storedState));
+  } catch (error) {
+    return normalizeContentLibraryState();
+  }
+}
+
+function saveContentLibraryState() {
+  try {
+    window.localStorage?.setItem(CONTENT_LIBRARY_STORAGE_KEY, JSON.stringify(contentLibraryState));
+  } catch (error) {
+    // Local storage can be unavailable in strict browser modes; the prototype can continue without persistence.
+  }
+}
+
+function addContentLibraryItem(kind, details = {}) {
+  if (kind !== "ai") return null;
+
+  const item = normalizeContentLibraryItem({
+    id: createContentLibraryId(kind),
+    kind,
+    title: details.title,
+    subtitle: details.subtitle || "AI 生成内容 · 已发送到设备",
+    mode: details.mode,
+    durationText: details.durationText || formatVoiceTime(AI_AUDIO_DURATION_MS),
+    source: details.source || "AI 创作",
+    transcript: details.transcript,
+    audioLabel: details.audioLabel,
+    devicePayload: details.devicePayload,
+  });
+
+  contentLibraryState.myItems = [item, ...contentLibraryState.myItems.filter((existingItem) => existingItem.id !== item.id)].slice(0, 20);
+  saveContentLibraryState();
+  return item;
 }
 
 function getDefaultPlayHistoryRecords() {
@@ -1477,7 +1609,6 @@ function setActiveMode(modeName) {
   modeSymbol.textContent = mode.symbol;
   modeTitle.textContent = mode.title;
   modeSubtitle.textContent = mode.subtitle;
-  playGlyph.src = mode.playGlyph;
   playTitle.textContent = mode.playTitle;
   playSubtitle.textContent = mode.playSubtitle;
   aiPrompt.textContent = mode.prompt;
@@ -1587,9 +1718,11 @@ async function toggleRandomPreviewPlayback() {
 }
 
 function showModalPanel(panelName) {
+  if (!appModal) return;
+
   currentModalPanel = panelName;
   appModal.dataset.panel = panelName;
-  appModal.setAttribute("aria-labelledby", modalTitleIds[panelName]);
+  appModal.setAttribute("aria-labelledby", modalTitleIds[panelName] || "");
 
   appModal.querySelectorAll(".modal-panel").forEach((panel) => {
     const isActive = panel.dataset.panel === panelName;
@@ -1599,6 +1732,8 @@ function showModalPanel(panelName) {
 }
 
 function openModal(panelName, triggerElement) {
+  if (!appModal || !modalBackdrop) return;
+
   closeMenu();
   closeSceneControlPanel();
   closeVoiceReviewPanel(false);
@@ -1867,9 +2002,11 @@ function closeModal() {
   clearGenerateSimulation({ resetAudio: true, resetPrompt: shouldResetGenerate });
   clearSendSimulation();
   app.classList.remove("modal-open");
-  appModal.setAttribute("aria-hidden", "true");
-  modalBackdrop.setAttribute("aria-hidden", "true");
-  generateError.textContent = "";
+  appModal?.setAttribute("aria-hidden", "true");
+  modalBackdrop?.setAttribute("aria-hidden", "true");
+  if (generateError) {
+    generateError.textContent = "";
+  }
 
   if (lastFocusedElement) {
     lastFocusedElement.focus();
@@ -2150,7 +2287,7 @@ function sendGeneratedAudioToDevice() {
     sendingHint: "请保持设备在线，内容马上开始播放",
     successTitle: "AI 内容发送成功",
     successCopy: "AI 生成内容已发送到投影灯，马上开始播放",
-    historyOnSuccess: () =>
+    historyOnSuccess: () => {
       addPlayHistoryRecord("ai", {
         title,
         subtitle: "AI 生成内容 · 已发送到设备",
@@ -2160,7 +2297,18 @@ function sendGeneratedAudioToDevice() {
         transcript,
         audioLabel: prompt || "AI 生成音频",
         devicePayload: buildPlayContentPayload("ai", title, modeName),
-      }),
+      });
+      addContentLibraryItem("ai", {
+        title,
+        subtitle: "AI 生成内容 · 已发送到设备",
+        mode: modeName,
+        durationText: formatVoiceTime(AI_AUDIO_DURATION_MS),
+        source: "AI 创作",
+        transcript,
+        audioLabel: prompt || "AI 生成音频",
+        devicePayload: buildPlayContentPayload("ai", title, modeName),
+      });
+    },
   });
 }
 
@@ -2235,6 +2383,7 @@ setActiveMode(app.dataset.mode || "story");
 updateDeviceControlUi();
 playHistoryRecords = loadPlayHistoryRecords();
 renderPlayHistory();
+contentLibraryState = loadContentLibraryState();
 
 document.querySelectorAll(".mode-card").forEach((card) => {
   card.addEventListener("click", () => setActiveMode(card.dataset.mode));
@@ -2250,6 +2399,7 @@ avatarButton.addEventListener("click", openMenu);
 menuBackdrop.addEventListener("click", closeMenu);
 menuCloseButton.addEventListener("click", closeMenu);
 closePlayHistoryButton?.addEventListener("click", closePlayHistoryPanel);
+modalBackdrop?.addEventListener("click", closeModal);
 menuActionButtons.forEach((button) => {
   button.addEventListener("click", () => selectMenuAction(button.dataset.menuAction));
 });
@@ -2308,7 +2458,6 @@ if (!isOffline) {
   closeAudioPreviewButton?.addEventListener("click", closeModal);
   sendGeneratedAudioButton?.addEventListener("click", sendGeneratedAudioToDevice);
   finishGenerateButton.addEventListener("click", closeModal);
-  modalBackdrop.addEventListener("click", closeModal);
   aiAudioPlayback?.addEventListener("timeupdate", updateAiAudioTime);
   aiAudioPlayback?.addEventListener("loadedmetadata", updateAiAudioTime);
   aiAudioPlayback?.addEventListener("pause", () => {
