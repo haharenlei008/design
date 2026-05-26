@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>宝宝投影灯内容库</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="stage-shell" id="stageShell">
+      <main class="app content-library-page library-bookshelf-page" id="contentLibraryApp" data-mode="story" aria-label="宝宝投影灯内容库">
+        <div class="scene-bg" id="librarySceneBg"></div>
+        <div class="mode-effects content-library-effects" aria-hidden="true"></div>
+        <div class="scene-vignette"></div>
+
+        <header class="content-page-header" aria-label="内容库导航">
+          <a class="library-back-button" id="contentBackButton" href="./index.html" aria-label="返回首页">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+              <path d="M20 8l-8 8 8 8"></path>
+            </svg>
+          </a>
+          <div class="content-page-title">
+            <h1>内容库</h1>
+            <span class="library-device-status">
+              <i aria-hidden="true"></i>
+              <span id="contentDeviceStatus">设备在线</span>
+            </span>
+          </div>
+          <img class="library-profile-avatar" src="./assets/images/content-library/child-avatar.png" alt="宝宝头像" />
+        </header>
+
+        <label class="content-library-search content-page-search" for="contentLibrarySearchInput">
+          <span class="content-library-search-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" focusable="false">
+              <circle cx="21" cy="21" r="11"></circle>
+              <path d="M30 30l9 9"></path>
+            </svg>
+          </span>
+          <input id="contentLibrarySearchInput" type="search" placeholder="搜索故事、儿歌、睡前内容" autocomplete="off" />
+        </label>
+
+        <section class="library-recommendations" aria-label="内容推荐">
+          <div class="library-section-title">
+            <span aria-hidden="true">✦</span>
+            <h2>今日推荐</h2>
+            <span aria-hidden="true">✦</span>
+          </div>
+
+          <div class="library-recommendation-grid">
+            <article class="library-hero-card" id="todayRecommendation" data-content-id="official-story-0">
+              <div class="library-feature-cover" id="todayRecommendationCover" aria-hidden="true"></div>
+              <div class="library-hero-copy">
+                <h3 id="todayRecommendationTitle">小美人鱼</h3>
+                <p id="todayRecommendationSubtitle">善良的公主勇敢追梦</p>
+                <div class="library-hero-meta" id="todayRecommendationMeta"></div>
+              </div>
+              <button class="library-hero-action" id="todayRecommendationButton" type="button" aria-label="查看小美人鱼详情">
+                <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                  <path d="M12 8l13 8-13 8z"></path>
+                </svg>
+              </button>
+            </article>
+
+            <article class="library-hero-card library-hero-card--secondary" id="secondaryRecommendation" data-content-id="official-sleep-0">
+              <div class="library-feature-cover" id="secondaryRecommendationCover" aria-hidden="true"></div>
+              <div class="library-hero-copy">
+                <h3 id="secondaryRecommendationTitle">晚安小熊</h3>
+                <p id="secondaryRecommendationSubtitle">温柔故事伴你入梦</p>
+                <div class="library-hero-meta" id="secondaryRecommendationMeta"></div>
+              </div>
+              <button class="library-hero-action" id="secondaryRecommendationButton" type="button" aria-label="查看晚安小熊详情">
+                <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                  <path d="M12 8l13 8-13 8z"></path>
+                </svg>
+              </button>
+            </article>
+
+            <button class="library-quick-card" id="favoriteSummaryButton" type="button">
+              <span class="library-quick-icon library-quick-icon--star" aria-hidden="true">★</span>
+              <span class="library-quick-copy">
+                <strong>最近收藏</strong>
+                <small id="favoriteSummaryCount">12个内容</small>
+              </span>
+              <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <path d="M12 8l8 8-8 8"></path>
+              </svg>
+            </button>
+
+            <button class="library-quick-card" id="aiSummaryButton" type="button">
+              <span class="library-quick-icon library-quick-icon--robot" aria-hidden="true"></span>
+              <span class="library-quick-copy">
+                <strong>最近AI内容</strong>
+                <small id="aiSummaryCount">8个内容</small>
+              </span>
+              <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <path d="M12 8l8 8-8 8"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="library-recent-list" id="recentContentRail" aria-live="polite" hidden></div>
+        </section>
+
+        <nav class="content-library-tabs content-page-tabs" role="tablist" aria-label="内容库分类">
+          <button class="content-library-tab is-active" type="button" data-library-tab="official" role="tab" aria-selected="true">官方内容</button>
+          <button class="content-library-tab" type="button" data-library-tab="mine" role="tab" aria-selected="false">我的内容</button>
+          <button class="content-library-tab" type="button" data-library-tab="topics" role="tab" aria-selected="false">专题</button>
+        </nav>
+
+        <section class="library-filter-panel" aria-label="内容筛选">
+          <div class="content-library-filters" role="group" aria-label="按模式筛选内容">
+            <button class="content-filter is-active" type="button" data-library-filter="all">
+              <span aria-hidden="true">▰</span>
+              全部模式
+            </button>
+            <button class="content-filter" type="button" data-library-filter="story">
+              <span aria-hidden="true">▰</span>
+              故事
+            </button>
+            <button class="content-filter" type="button" data-library-filter="music">
+              <span aria-hidden="true">♪</span>
+              儿歌
+            </button>
+            <button class="content-filter" type="button" data-library-filter="sleep">
+              <span aria-hidden="true">☾</span>
+              睡眠
+            </button>
+            <button class="content-filter" type="button" data-library-filter="parent">
+              <span aria-hidden="true">●●</span>
+              亲子
+            </button>
+          </div>
+
+          <div class="library-filter-row">
+            <div class="library-keyword-row" aria-label="当前关键词">
+              <span>关键词：</span>
+              <button class="library-keyword-chip" id="activeKeywordChip" type="button">睡前 ×</button>
+              <button class="library-keyword-clear" id="clearSearchButton" type="button">清除</button>
+            </div>
+
+            <div class="content-library-subcategories" role="group" aria-label="按子分类筛选内容">
+              <button class="content-subcategory is-active" type="button" data-library-subcategory="all">
+                <span aria-hidden="true">⌁</span>
+                子分类
+                <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                  <path d="M9 12l7 7 7-7"></path>
+                </svg>
+              </button>
+              <div class="content-subcategory-menu" aria-hidden="true">
+                <button class="content-subcategory" type="button" data-library-subcategory="adventure">冒险</button>
+                <button class="content-subcategory" type="button" data-library-subcategory="goodnight">晚安</button>
+                <button class="content-subcategory" type="button" data-library-subcategory="rhythm">节奏</button>
+                <button class="content-subcategory" type="button" data-library-subcategory="interaction">互动</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="library-topic-strip" id="contentTopicList" aria-label="专题列表" hidden></section>
+
+        <section class="content-library-list" id="contentLibraryList" role="list" aria-live="polite"></section>
+        <section class="content-library-empty" id="contentLibraryEmpty" hidden>
+          <strong>还没有我的内容</strong>
+          <small>收藏官方内容，或发送 AI 生成内容后会出现在这里</small>
+        </section>
+        <p class="content-library-hint" id="contentLibraryHint" aria-live="polite">设备在线后可发送播放</p>
+
+        <section class="library-detail-panel" id="contentLibraryDetail" aria-label="内容详情" aria-hidden="true">
+          <span class="library-detail-handle" aria-hidden="true"></span>
+          <button class="library-detail-close" id="closeContentDetailButton" type="button" aria-label="关闭内容详情">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+              <path d="M9 9l14 14M23 9L9 23"></path>
+            </svg>
+          </button>
+
+          <div class="library-detail-main" id="detailCover">
+            <div class="library-detail-cover-art" id="detailCoverArt" aria-hidden="true"></div>
+            <div class="library-detail-copy">
+              <div class="library-detail-title-row">
+                <h2 id="detailTitle">小美人鱼</h2>
+                <span id="detailModeLabel">故事模式</span>
+              </div>
+              <div class="library-detail-meta" id="detailMeta"></div>
+              <p class="library-detail-transcript" id="detailTranscript">在蔚蓝的海底，住着一位善良美丽的小美人鱼公主。</p>
+              <p class="library-detail-source" id="detailSource">经典童话 · 官方内容 · 8分钟</p>
+              <strong id="detailCoverTitle">小美人鱼</strong>
+              <p id="detailSubtitle">经典童话，善良的美人鱼为了爱勇敢追梦。</p>
+            </div>
+          </div>
+
+          <div class="library-detail-actions">
+            <button class="content-preview-button" id="detailPreviewButton" type="button">
+              <span aria-hidden="true">◖</span>
+              试听
+            </button>
+            <button class="content-favorite-button" id="detailFavoriteButton" type="button" aria-pressed="false">
+              <span aria-hidden="true">☆</span>
+              收藏
+            </button>
+            <button class="content-send-button" id="detailSendButton" type="button">
+              <span aria-hidden="true">➤</span>
+              发送播放
+            </button>
+          </div>
+
+          <button class="library-detail-back" id="returnContentDetailButton" type="button" aria-label="返回列表">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+              <path d="M10 20l6-6 6 6"></path>
+            </svg>
+            <span>返回列表</span>
+          </button>
+          <audio id="contentPreviewPlayback" preload="auto"></audio>
+        </section>
+
+        <div class="content-library-toast" id="contentLibraryToast" role="status" aria-hidden="true"></div>
+      </main>
+    </div>
+    <script src="./content-library.js?v=20260526"></script>
+  </body>
+</html>

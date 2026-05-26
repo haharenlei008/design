@@ -1,0 +1,87 @@
+[
+  {
+    "name": "little-mermaid-cover.png",
+    "path": "assets/images/content-library/little-mermaid-cover.png",
+    "type": "image",
+    "source": "cropped-from-design",
+    "usage": "内容库首屏、列表和详情中的小美人鱼封面",
+    "replaceable": true,
+    "status": "ready",
+    "notes": "从参考设计图裁切，保留原图圆角和局部背景，建议后续替换为正式封面图。",
+    "crop": {
+      "x": 32,
+      "y": 1300,
+      "w": 255,
+      "h": 226
+    },
+    "sourceFile": "/Users/machong/Downloads/ChatGPT Image 2026年5月26日 15_09_52.png"
+  },
+  {
+    "name": "goodnight-bear-cover.png",
+    "path": "assets/images/content-library/goodnight-bear-cover.png",
+    "type": "image",
+    "source": "cropped-from-design",
+    "usage": "内容库推荐区和列表中的晚安小熊封面",
+    "replaceable": true,
+    "status": "ready",
+    "notes": "从参考设计图裁切，建议后续替换为正式封面图。",
+    "crop": {
+      "x": 488,
+      "y": 248,
+      "w": 170,
+      "h": 130
+    },
+    "sourceFile": "/Users/machong/Downloads/ChatGPT Image 2026年5月26日 15_09_52.png"
+  },
+  {
+    "name": "number-song-cover.png",
+    "path": "assets/images/content-library/number-song-cover.png",
+    "type": "image",
+    "source": "cropped-from-design",
+    "usage": "内容库列表中的数字歌封面",
+    "replaceable": true,
+    "status": "ready",
+    "notes": "从参考设计图裁切，建议后续替换为正式封面图。",
+    "crop": {
+      "x": 47,
+      "y": 984,
+      "w": 171,
+      "h": 132
+    },
+    "sourceFile": "/Users/machong/Downloads/ChatGPT Image 2026年5月26日 15_09_52.png"
+  },
+  {
+    "name": "color-game-cover.png",
+    "path": "assets/images/content-library/color-game-cover.png",
+    "type": "image",
+    "source": "cropped-from-design",
+    "usage": "内容库列表中的一起认识颜色封面",
+    "replaceable": true,
+    "status": "ready",
+    "notes": "从参考设计图裁切，建议后续替换为正式封面图。",
+    "crop": {
+      "x": 47,
+      "y": 1130,
+      "w": 171,
+      "h": 132
+    },
+    "sourceFile": "/Users/machong/Downloads/ChatGPT Image 2026年5月26日 15_09_52.png"
+  },
+  {
+    "name": "child-avatar.png",
+    "path": "assets/images/content-library/child-avatar.png",
+    "type": "image",
+    "source": "cropped-from-design",
+    "usage": "内容库页面右上角儿童头像",
+    "replaceable": true,
+    "status": "ready",
+    "notes": "从参考设计图裁切，保留头像金色描边，建议后续替换为账户头像素材。",
+    "crop": {
+      "x": 838,
+      "y": 20,
+      "w": 76,
+      "h": 76
+    },
+    "sourceFile": "/Users/machong/Downloads/ChatGPT Image 2026年5月26日 15_09_52.png"
+  }
+]

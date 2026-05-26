@@ -110,17 +110,28 @@
         </div>
 
         <section class="play-panel" id="playPanel" aria-label="随机播放">
+          <a class="content-library-button content-library-button--side" id="contentLibraryButton" href="./content-library.html?device=offline" aria-label="进入内容库">
+            <span class="content-library-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" focusable="false">
+                <path d="M10 13h12l4 5h12v18H10z"></path>
+                <path d="M15 25h18"></path>
+                <path d="M15 31h12"></path>
+              </svg>
+            </span>
+            <span>内容库</span>
+          </a>
           <div class="play-left">
-            <img class="play-glyph" id="playGlyph" src="./图标/图标6.png" alt="" />
             <div class="play-copy">
               <p id="playTitle">星星城堡历险记</p>
               <small id="playSubtitle">随机讲一个睡前故事</small>
             </div>
           </div>
-          <button class="random-button" type="button" aria-label="随机播放" aria-disabled="true" disabled>
-            <img src="./图标/图标1.png" alt="" />
-            <span>随机播放</span>
-          </button>
+          <div class="play-actions" aria-label="随机播放">
+            <button class="random-button" type="button" aria-label="随机播放" aria-disabled="true" disabled>
+              <img src="./图标/图标1.png" alt="" />
+              <span>随机播放</span>
+            </button>
+          </div>
         </section>
 
         <section class="ai-panel" aria-label="AI生成">
