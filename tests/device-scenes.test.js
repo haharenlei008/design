@@ -10,6 +10,7 @@ const contentLibraryJs = fs.readFileSync(path.join(root, "content-library.js"), 
 const appJs = fs.readFileSync(path.join(root, "app.js"), "utf8");
 const stylesCss = fs.readFileSync(path.join(root, "styles.css"), "utf8");
 const contentLibraryAssetDir = path.join(root, "assets", "images", "content-library");
+const contentLibraryIconDir = path.join(root, "图标", "内容库");
 const contentLibraryManifestPath = path.join(root, "assets", "manifest.json");
 
 const modeDefaults = ["story", "music", "sleep", "parent"];
@@ -19,6 +20,27 @@ const rotationModes = ["低速", "中速", "高速", "停止旋转"];
 const contentLibraryTabs = ["官方内容", "我的内容", "专题"];
 const contentLibrarySubcategories = ["冒险", "晚安", "节奏", "互动"];
 const officialContentCoverFiles = ["little-mermaid-cover", "goodnight-bear-cover", "number-song-cover", "color-game-cover"];
+const requiredContentLibraryIconFiles = [
+  " Image 1.svg",
+  " Image 2.svg",
+  " Image 3.svg",
+  " Image 4.svg",
+  " Image 5.svg",
+  " Image 6.svg",
+  " Image 7.svg",
+  " Image 8.svg",
+  " Image 9.svg",
+  " Image 10.svg",
+  " Image 11.svg",
+  " Image 12.svg",
+  " Image 13.svg",
+  " Image 14.svg",
+  " Image 15.svg",
+  " Image 17.svg",
+  " Image 18.svg",
+  " Image 20.svg",
+  " Image 21.svg",
+];
 
 for (const modeName of modeDefaults) {
   assert(appJs.includes(`${modeName}: {`), `app.js should define ${modeName} mode device defaults`);
@@ -70,7 +92,23 @@ assert(contentLibraryHtml.includes("library-bookshelf-page"), "content-library.h
 assert(contentLibraryHtml.includes('id="contentLibrarySearchInput"'), "content-library.html should include search input");
 assert(contentLibraryHtml.includes('id="todayRecommendationCover"'), "content-library.html should include a cover-led today recommendation");
 assert(contentLibraryHtml.includes('id="secondaryRecommendationCover"'), "content-library.html should include a secondary recommendation cover");
-assert(contentLibraryHtml.includes('assets/images/content-library/child-avatar.png'), "content-library.html should use the cropped child avatar asset");
+assert(contentLibraryHtml.includes('./图标/内容库/%20Image%2021.svg'), "content-library.html should use the supplied content-library avatar icon");
+assert(contentLibraryHtml.includes('./图标/内容库/%20Image%202.svg'), "content-library.html should use the supplied content-library back icon");
+assert(contentLibraryHtml.includes('./图标/内容库/%20Image%203.svg'), "content-library.html should use the supplied content-library search icon");
+assert(contentLibraryHtml.includes('./图标/内容库/%20Image%2020.svg'), "content-library.html should use the supplied content-library online status icon");
+assert(!contentLibraryHtml.includes("<svg"), "content-library.html should not keep inline SVG icons");
+for (const inlineIcon of ["✦", "★", "▰", "♪", "☾", "●●", "⌁", "◖", "☆", "➤"]) {
+  assert(!contentLibraryHtml.includes(inlineIcon), `content-library.html should replace inline ${inlineIcon} icons with supplied icon assets`);
+}
+for (const iconFile of requiredContentLibraryIconFiles) {
+  assert(fs.existsSync(path.join(contentLibraryIconDir, iconFile)), `${iconFile} should exist in the supplied content library icon directory`);
+}
+const referencedContentLibraryIconPaths = [...new Set(`${contentLibraryHtml}\n${contentLibraryJs}`.match(/\.\/图标\/内容库\/[^"')\s]+\.svg/g) || [])];
+assert(referencedContentLibraryIconPaths.length >= 12, "content-library page should reference the supplied icon set broadly");
+for (const iconPath of referencedContentLibraryIconPaths) {
+  const iconFile = decodeURIComponent(iconPath.replace("./图标/内容库/", ""));
+  assert(fs.existsSync(path.join(contentLibraryIconDir, iconFile)), `${iconPath} should resolve to an existing content library icon`);
+}
 for (const tabName of contentLibraryTabs) {
   assert(contentLibraryHtml.includes(tabName), `content-library.html should include ${tabName} content library tab`);
 }
@@ -145,6 +183,9 @@ assert(contentLibraryJs.includes("const PLAY_HISTORY_STORAGE_KEY"), "content-lib
 assert(contentLibraryJs.includes("coverImage"), "content-library.js should expose coverImage for content items");
 assert(contentLibraryJs.includes("coverAlt"), "content-library.js should expose coverAlt for accessible cover art");
 assert(contentLibraryJs.includes("./assets/images/content-library/little-mermaid-cover.png"), "content-library.js should define the default AI cover asset from the cropped asset set");
+assert(contentLibraryJs.includes("const libraryIconPaths"), "content-library.js should centralize supplied content library icon paths");
+assert(contentLibraryJs.includes("function createLibraryIcon"), "content-library.js should render button icons from supplied content library assets");
+assert(!contentLibraryJs.includes("createSvgButtonIcon"), "content-library.js should not generate inline SVG button icons");
 assert(fs.existsSync(contentLibraryManifestPath), "assets/manifest.json should exist for cropped content library assets");
 const contentLibraryManifest = JSON.parse(fs.readFileSync(contentLibraryManifestPath, "utf8"));
 for (const coverId of officialContentCoverFiles) {
@@ -193,5 +234,10 @@ assert(stylesCss.includes(".content-subcategory"), "styles.css should style cont
 assert(stylesCss.includes(".library-filter-panel"), "content-library page should group filters on a readable surface");
 assert(stylesCss.includes(".library-detail-panel"), "styles.css should style the content library detail view");
 assert(stylesCss.includes(".library-topic-card"), "styles.css should style content library topic cards");
+assert(stylesCss.includes(".library-icon-img"), "styles.css should style supplied content library icon images");
+assert(!stylesCss.includes('content: "☆"'), "styles.css should not render favorite icon with CSS text content");
+assert(!stylesCss.includes('content: "★"'), "styles.css should not render active favorite icon with CSS text content");
+assert(!stylesCss.includes('content: "◖"'), "styles.css should not render preview icon with CSS text content");
+assert(!stylesCss.includes('content: "➤"'), "styles.css should not render send icon with CSS text content");
 
 console.log("device scene prototype checks passed");

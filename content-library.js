@@ -7,6 +7,13 @@ const PREVIEW_DURATION_MS = 8000;
 const AI_AUDIO_DURATION_MS = 20000;
 const CONTENT_LIBRARY_COVER_BASE = "./assets/images/content-library/";
 const AI_DEFAULT_COVER_IMAGE = "./assets/images/content-library/little-mermaid-cover.png";
+const CONTENT_LIBRARY_ICON_BASE = "./图标/内容库/";
+const libraryIconPaths = {
+  favorite: `${CONTENT_LIBRARY_ICON_BASE}%20Image%205.svg`,
+  favoriteActive: `${CONTENT_LIBRARY_ICON_BASE}%20Image%205.svg`,
+  preview: `${CONTENT_LIBRARY_ICON_BASE}%20Image%2014.svg`,
+  send: `${CONTENT_LIBRARY_ICON_BASE}%20Image%2013.svg`,
+};
 
 const modeConfig = {
   story: {
@@ -590,15 +597,18 @@ function renderCoverInto(container, item, className = "library-cover-art") {
   container.replaceChildren(createCoverImageElement(item, className));
 }
 
-function createSvgButtonIcon(path) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.setAttribute("viewBox", "0 0 32 32");
-  svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("focusable", "false");
-  const iconPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  iconPath.setAttribute("d", path);
-  svg.append(iconPath);
-  return svg;
+function createLibraryIcon(iconName, extraClassName = "") {
+  const image = document.createElement("img");
+  image.className = `library-icon-img${extraClassName ? ` ${extraClassName}` : ""}`;
+  image.src = libraryIconPaths[iconName] || libraryIconPaths.preview;
+  image.alt = "";
+  image.setAttribute("aria-hidden", "true");
+  return image;
+}
+
+function setLibraryActionButton(button, iconName, label) {
+  if (!button) return;
+  button.replaceChildren(createLibraryIcon(iconName), document.createTextNode(label));
 }
 
 function showContentLibraryHint(message) {
@@ -638,7 +648,7 @@ function updateDeviceUi() {
 
   app?.classList.toggle("is-offline", isOffline);
   if (detailSendButton && isOffline) {
-    detailSendButton.textContent = "在线后发送";
+    setLibraryActionButton(detailSendButton, "send", "在线后发送");
     detailSendButton.disabled = true;
     detailSendButton.setAttribute("aria-disabled", "true");
   }
@@ -782,7 +792,7 @@ function renderContentCard(item) {
     const favoriteButton = document.createElement("button");
     favoriteButton.className = "content-favorite-button";
     favoriteButton.type = "button";
-    favoriteButton.textContent = isFavorite ? "已收藏" : "收藏";
+    setLibraryActionButton(favoriteButton, isFavorite ? "favoriteActive" : "favorite", isFavorite ? "已收藏" : "收藏");
     favoriteButton.setAttribute("aria-label", isFavorite ? `取消收藏${item.title}` : `收藏${item.title}`);
     favoriteButton.setAttribute("aria-pressed", String(isFavorite));
     favoriteButton.addEventListener("click", (event) => {
@@ -795,7 +805,7 @@ function renderContentCard(item) {
   const previewButton = document.createElement("button");
   previewButton.className = "content-preview-button";
   previewButton.type = "button";
-  previewButton.textContent = previewItemId === item.id && !contentPreviewPlayback.paused ? "暂停" : "试听";
+  setLibraryActionButton(previewButton, "preview", previewItemId === item.id && !contentPreviewPlayback.paused ? "暂停" : "试听");
   previewButton.setAttribute("aria-label", `试听${item.title}`);
   previewButton.addEventListener("click", (event) => {
     event.stopPropagation();
@@ -806,7 +816,7 @@ function renderContentCard(item) {
   const sendButton = document.createElement("button");
   sendButton.className = "content-send-button";
   sendButton.type = "button";
-  sendButton.textContent = isOffline ? "在线后发" : "发送播放";
+  setLibraryActionButton(sendButton, "send", isOffline ? "在线后发" : "发送播放");
   sendButton.setAttribute("aria-label", `${isOffline ? "设备在线后发送" : "发送播放"}${item.title}`);
   sendButton.disabled = isOffline;
   sendButton.setAttribute("aria-disabled", String(isOffline));
@@ -917,18 +927,18 @@ function renderContentDetail(itemId = activeDetailItemId) {
 
   if (detailFavoriteButton) {
     detailFavoriteButton.hidden = item.kind !== "official";
-    detailFavoriteButton.textContent = isFavorite ? "已收藏" : "收藏";
+    setLibraryActionButton(detailFavoriteButton, isFavorite ? "favoriteActive" : "favorite", isFavorite ? "已收藏" : "收藏");
     detailFavoriteButton.setAttribute("aria-label", isFavorite ? `取消收藏${item.title}` : `收藏${item.title}`);
     detailFavoriteButton.setAttribute("aria-pressed", String(isFavorite));
   }
 
   if (detailPreviewButton) {
-    detailPreviewButton.textContent = previewItemId === item.id && !contentPreviewPlayback.paused ? "暂停" : "试听";
+    setLibraryActionButton(detailPreviewButton, "preview", previewItemId === item.id && !contentPreviewPlayback.paused ? "暂停" : "试听");
     detailPreviewButton.setAttribute("aria-label", `试听${item.title}`);
   }
 
   if (detailSendButton) {
-    detailSendButton.textContent = isOffline ? "在线后发送" : "发送播放";
+    setLibraryActionButton(detailSendButton, "send", isOffline ? "在线后发送" : "发送播放");
     detailSendButton.setAttribute("aria-label", `${isOffline ? "设备在线后发送" : "发送播放"}${item.title}`);
     detailSendButton.disabled = isOffline;
     detailSendButton.setAttribute("aria-disabled", String(isOffline));
@@ -997,7 +1007,7 @@ function updatePreviewButtons() {
   document.querySelectorAll(".content-preview-button").forEach((button) => {
     const card = button.closest("[data-content-id]");
     const itemId = card?.dataset.contentId || activeDetailItemId;
-    button.textContent = previewItemId === itemId && !contentPreviewPlayback.paused ? "暂停" : "试听";
+    setLibraryActionButton(button, "preview", previewItemId === itemId && !contentPreviewPlayback.paused ? "暂停" : "试听");
   });
 
   if (activeDetailItemId) {
